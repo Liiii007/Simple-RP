@@ -1,4 +1,4 @@
-# Simple-RP
+# SimpleRP
 
 A custom SRP for unity, following https://catlikecoding.com/unity/tutorials/custom-srp/
 THX!

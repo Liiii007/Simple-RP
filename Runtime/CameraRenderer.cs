@@ -10,7 +10,10 @@ public partial class CameraRenderer
     private readonly CommandBuffer _buffer = new CommandBuffer { name = BufferName };
     private CullingResults _cullingResults;
 
-    public void Render(ScriptableRenderContext context, Camera camera)
+    private PostFXStack _postFXStack = new PostFXStack();
+    private static int _frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
+
+    public void Render(ScriptableRenderContext context, Camera camera, PostFXSettings postFXSettings)
     {
         _context = context;
         _camera = camera;
@@ -22,10 +25,22 @@ public partial class CameraRenderer
             return;
         }
 
+        _postFXStack.Setup(context, camera, postFXSettings);
         Setup();
         DrawVisibleGeometry();
         DrawUnsupportedShaders();
-        DrawGizmos();
+
+        DrawGizmosBeforePostFX();
+
+        if (_postFXStack.IsActive)
+        {
+            _postFXStack.Render(_frameBufferId);
+        }
+
+        DrawGizmosAfterPostFX();
+
+        Cleanup();
+
         Submit();
     }
 
@@ -33,6 +48,24 @@ public partial class CameraRenderer
     {
         _context.SetupCameraProperties(_camera);
         CameraClearFlags flags = _camera.clearFlags;
+
+        if (_postFXStack.IsActive)
+        {
+            //To prevent random result
+            if (flags > CameraClearFlags.Color)
+            {
+                //Left skybox(1) or color(2) flag here
+                flags = CameraClearFlags.Color;
+            }
+
+            _buffer.GetTemporaryRT(
+                _frameBufferId, _camera.pixelWidth, _camera.pixelHeight, 32,
+                FilterMode.Bilinear, RenderTextureFormat.Default);
+
+            _buffer.SetRenderTarget(_frameBufferId,
+                RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+        }
+
         _buffer.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,
             flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
         _buffer.BeginSample(SampleName);
@@ -84,5 +117,13 @@ public partial class CameraRenderer
         }
 
         return false;
+    }
+
+    private void Cleanup()
+    {
+        if (_postFXStack.IsActive)
+        {
+            _buffer.ReleaseTemporaryRT(_frameBufferId);
+        }
     }
 }

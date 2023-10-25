@@ -5,9 +5,12 @@ using UnityEngine.Rendering;
 public class CustomRenderPipeline : RenderPipeline
 {
     private readonly CameraRenderer _renderer = new CameraRenderer();
+    private PostFXSettings _postFXSettings;
 
-    public CustomRenderPipeline()
+    public CustomRenderPipeline(PostFXSettings postFXSettings)
     {
+        _postFXSettings = postFXSettings;
+
         //Enable SRP Batcher
         GraphicsSettings.useScriptableRenderPipelineBatching = true;
     }
@@ -20,7 +23,7 @@ public class CustomRenderPipeline : RenderPipeline
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            _renderer.Render(context, cameras[i]);
+            _renderer.Render(context, cameras[i], _postFXSettings);
         }
     }
 }

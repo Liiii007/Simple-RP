@@ -5,7 +5,8 @@ using UnityEngine.Rendering;
 
 partial class CameraRenderer
 {
-    partial void DrawGizmos();
+    partial void DrawGizmosBeforePostFX();
+    partial void DrawGizmosAfterPostFX();
     partial void DrawUnsupportedShaders();
     partial void PrepareForSceneWindow();
     partial void PrepareBuffer();
@@ -25,11 +26,18 @@ partial class CameraRenderer
 
     private static Material _errorMaterial;
 
-    partial void DrawGizmos()
+    partial void DrawGizmosBeforePostFX()
     {
         if (Handles.ShouldRenderGizmos())
         {
             _context.DrawGizmos(_camera, GizmoSubset.PreImageEffects);
+        }
+    }
+
+    partial void DrawGizmosAfterPostFX()
+    {
+        if (Handles.ShouldRenderGizmos())
+        {
             _context.DrawGizmos(_camera, GizmoSubset.PostImageEffects);
         }
     }
@@ -44,7 +52,7 @@ partial class CameraRenderer
         var drawingSettings = new DrawingSettings(
             LegacyShaderTagIds[0], new SortingSettings(_camera)
         ) { overrideMaterial = _errorMaterial };
-        
+
         for (int i = 1; i < LegacyShaderTagIds.Length; i++)
         {
             drawingSettings.SetShaderPassName(i, LegacyShaderTagIds[i]);

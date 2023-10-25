@@ -6,6 +6,12 @@ public class CustomRenderPipeline : RenderPipeline
 {
     private readonly CameraRenderer _renderer = new CameraRenderer();
 
+    public CustomRenderPipeline()
+    {
+        //Enable SRP Batcher
+        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+    }
+
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
     }

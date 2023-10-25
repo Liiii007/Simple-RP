@@ -38,13 +38,13 @@ partial class CameraRenderer
     {
         if (_errorMaterial == null)
         {
-            _errorMaterial =
-                new Material(Shader.Find("Hidden/InternalErrorShader"));
+            _errorMaterial = new Material(Shader.Find("Hidden/InternalErrorShader"));
         }
 
         var drawingSettings = new DrawingSettings(
             LegacyShaderTagIds[0], new SortingSettings(_camera)
         ) { overrideMaterial = _errorMaterial };
+        
         for (int i = 1; i < LegacyShaderTagIds.Length; i++)
         {
             drawingSettings.SetShaderPassName(i, LegacyShaderTagIds[i]);

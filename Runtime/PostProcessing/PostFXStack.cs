@@ -53,7 +53,9 @@ public partial class PostFXStack
 
     private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFXSettings.FXPass pass)
     {
+        //Set origin texture
         _buffer.SetGlobalTexture(_fxSourceId, from);
+        //Then draw to render target
         _buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
         _buffer.DrawProcedural(Matrix4x4.identity, _settings.Material, (int)pass, MeshTopology.Triangles, 3);
     }
@@ -72,6 +74,7 @@ public partial class PostFXStack
         var bloomSettings = _settings.Bloom;
 
         _buffer.BeginSample("Bloom");
+        //Prefilter
         int width = _camera.pixelWidth / 2;
         int height = _camera.pixelHeight / 2;
         var format = RenderTextureFormat.Default;

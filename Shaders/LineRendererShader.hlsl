@@ -4,11 +4,13 @@
 #include "../ShaderLibrary/Common.hlsl"
 #include "../ShaderLibrary/SDF.hlsl"
 
-float4 _Color;
-float4 _BoundColor;
-float _Width;
-float _BoundWidth;
-float _AARate;
+CBUFFER_START(UnityPerMaterial)
+    float4 _Color;
+    float4 _BoundColor;
+    float _Width;
+    float _BoundWidth;
+    float _AARate;
+CBUFFER_END
 
 struct LineVertex
 {

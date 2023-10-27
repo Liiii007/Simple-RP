@@ -13,12 +13,24 @@ public partial class CameraRenderer
     private PostFXStack _postFXStack = new PostFXStack();
     private static int _frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
     private bool _useHDR;
+    private bool _useRenderScale;
+    private float _renderScale;
 
-    public void Render(ScriptableRenderContext context, Camera camera, PostFXSettings postFXSettings, bool allowHDR)
+    private Vector2Int _screenRTSize =>
+        new((int)(_camera.pixelWidth * _renderScale), (int)(_camera.pixelHeight * _renderScale));
+
+    private bool _useIntermiddleBuffer;
+
+    public void Render(ScriptableRenderContext context, Camera camera, PostFXSettings postFXSettings, bool allowHDR,
+        float renderScale)
     {
         _context = context;
         _camera = camera;
         _useHDR = camera.allowHDR && allowHDR;
+        _renderScale = renderScale;
+
+        _useRenderScale = _renderScale < 0.99f || _renderScale > 1.01f;
+        _useIntermiddleBuffer = _useRenderScale || _postFXStack != null;
 
         PrepareBuffer();
         PrepareForSceneWindow();
@@ -27,7 +39,7 @@ public partial class CameraRenderer
             return;
         }
 
-        _postFXStack.Setup(context, camera, postFXSettings, _useHDR);
+        _postFXStack.Setup(context, camera, postFXSettings, _useHDR, _screenRTSize);
         Setup();
         DrawVisibleGeometry();
         DrawUnsupportedShaders();
@@ -60,8 +72,12 @@ public partial class CameraRenderer
                 flags = CameraClearFlags.Color;
             }
 
+            //Set render target here
             _buffer.GetTemporaryRT(
-                _frameBufferId, _camera.pixelWidth, _camera.pixelHeight, 32,
+                _frameBufferId,
+                _screenRTSize.x,
+                _screenRTSize.y,
+                32,
                 FilterMode.Bilinear,
                 _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
 
@@ -84,18 +100,14 @@ public partial class CameraRenderer
         var drawingSettings = new DrawingSettings(UnlitShaderTagId, sortingSettings);
         var filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
-        _context.DrawRenderers(
-            _cullingResults, ref drawingSettings, ref filteringSettings
-        );
+        _context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
         _context.DrawSkybox(_camera);
 
         sortingSettings.criteria = SortingCriteria.CommonTransparent;
         drawingSettings.sortingSettings = sortingSettings;
         filteringSettings.renderQueueRange = RenderQueueRange.transparent;
 
-        _context.DrawRenderers(
-            _cullingResults, ref drawingSettings, ref filteringSettings
-        );
+        _context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
     }
 
     private void Submit()

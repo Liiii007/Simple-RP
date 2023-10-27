@@ -15,6 +15,8 @@ public partial class PostFXStack
     private int _fxSourceId = Shader.PropertyToID("_PostFXSource");
     private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
 
+    private Vector2Int _screenRTSize;
+
     public PostFXStack()
     {
         //Get sequential texture id 
@@ -25,11 +27,13 @@ public partial class PostFXStack
         }
     }
 
-    public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR)
+    public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR,
+        Vector2Int screenRTSize)
     {
         _context = context;
         _camera = camera;
         _useHDR = useHDR;
+        _screenRTSize = screenRTSize;
 
         //Only GameView(1) and SceneView(2) camera will apply post fx
         if (camera.cameraType <= CameraType.SceneView)

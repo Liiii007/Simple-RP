@@ -5,9 +5,10 @@ using UnityEngine.Rendering;
 public class CustomRenderPipelineAsset : RenderPipelineAsset
 {
     [SerializeField] private PostFXSettings _postFXSettings = default;
+    [SerializeField] private bool allowHDR = true;
 
     protected override RenderPipeline CreatePipeline()
     {
-        return new CustomRenderPipeline(_postFXSettings);
+        return new CustomRenderPipeline(_postFXSettings, allowHDR);
     }
 }

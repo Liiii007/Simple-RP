@@ -6,10 +6,12 @@ public class CustomRenderPipeline : RenderPipeline
 {
     private readonly CameraRenderer _renderer = new CameraRenderer();
     private PostFXSettings _postFXSettings;
+    private bool _allowHDR;
 
-    public CustomRenderPipeline(PostFXSettings postFXSettings)
+    public CustomRenderPipeline(PostFXSettings postFXSettings, bool allowHDR)
     {
         _postFXSettings = postFXSettings;
+        _allowHDR = allowHDR;
 
         //Enable SRP Batcher
         GraphicsSettings.useScriptableRenderPipelineBatching = true;
@@ -23,7 +25,7 @@ public class CustomRenderPipeline : RenderPipeline
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            _renderer.Render(context, cameras[i], _postFXSettings);
+            _renderer.Render(context, cameras[i], _postFXSettings, _allowHDR);
         }
     }
 }

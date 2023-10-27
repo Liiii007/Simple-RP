@@ -2,6 +2,7 @@
 #define CUSTOM_POST_FX_PASSES_INCLUDED
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
 
 float4 _ProjectionParams;
 float4 _PostFXSource_TexelSize;
@@ -127,6 +128,14 @@ float4 BloomPrefilterPassFragment(Varyings input) : SV_TARGET
 {
     float3 color = ApplyBloomThreshold(GetSource(input.screenUV).rgb);
     return float4(color, 1.0);
+}
+
+float4 ToneMappingACESPassFragment(Varyings input) : SV_TARGET
+{
+    float4 color = GetSource(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
+    return color;
 }
 
 #endif

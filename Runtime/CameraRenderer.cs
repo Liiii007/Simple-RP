@@ -12,11 +12,13 @@ public partial class CameraRenderer
 
     private PostFXStack _postFXStack = new PostFXStack();
     private static int _frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
+    private bool _useHDR;
 
-    public void Render(ScriptableRenderContext context, Camera camera, PostFXSettings postFXSettings)
+    public void Render(ScriptableRenderContext context, Camera camera, PostFXSettings postFXSettings, bool allowHDR)
     {
         _context = context;
         _camera = camera;
+        _useHDR = camera.allowHDR && allowHDR;
 
         PrepareBuffer();
         PrepareForSceneWindow();
@@ -25,7 +27,7 @@ public partial class CameraRenderer
             return;
         }
 
-        _postFXStack.Setup(context, camera, postFXSettings);
+        _postFXStack.Setup(context, camera, postFXSettings, _useHDR);
         Setup();
         DrawVisibleGeometry();
         DrawUnsupportedShaders();
@@ -60,7 +62,8 @@ public partial class CameraRenderer
 
             _buffer.GetTemporaryRT(
                 _frameBufferId, _camera.pixelWidth, _camera.pixelHeight, 32,
-                FilterMode.Bilinear, RenderTextureFormat.Default);
+                FilterMode.Bilinear,
+                _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
 
             _buffer.SetRenderTarget(_frameBufferId,
                 RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);

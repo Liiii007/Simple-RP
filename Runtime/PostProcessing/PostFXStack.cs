@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.Rendering;
 
 public partial class PostFXStack
@@ -9,6 +10,7 @@ public partial class PostFXStack
     private ScriptableRenderContext _context;
     private Camera _camera;
     private PostFXSettings _settings;
+    private bool _useHDR;
 
     private int _fxSourceId = Shader.PropertyToID("_PostFXSource");
     private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
@@ -23,10 +25,11 @@ public partial class PostFXStack
         }
     }
 
-    public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings)
+    public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR)
     {
         _context = context;
         _camera = camera;
+        _useHDR = useHDR;
 
         //Only GameView(1) and SceneView(2) camera will apply post fx
         if (camera.cameraType <= CameraType.SceneView)
@@ -45,8 +48,16 @@ public partial class PostFXStack
 
     public void Render(int sourceId)
     {
-        // Draw(sourceId, BuiltinRenderTextureType.CameraTarget, PostFXSettings.FXPass.Copy);
-        DoBloom(sourceId);
+        if (DoBloom(sourceId))
+        {
+            DoToneMapping(_bloomResultRT);
+            _buffer.ReleaseTemporaryRT(_bloomResultRT);
+        }
+        else
+        {
+            DoToneMapping(sourceId);
+        }
+
         _context.ExecuteCommandBuffer(_buffer);
         _buffer.Clear();
     }
@@ -68,27 +79,26 @@ public partial class PostFXStack
     private int _bloomPrefilterId = Shader.PropertyToID("_BloomPrefilter");
     private int _bloomThresholdId = Shader.PropertyToID("_BloomThreshold");
     private int _bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
+    private int _bloomResultRT = Shader.PropertyToID("_BloomResult");
 
-    private void DoBloom(int sourceRT)
+    private bool DoBloom(int sourceId)
     {
         var bloomSettings = _settings.Bloom;
 
-        _buffer.BeginSample("Bloom");
         //Prefilter
         int width = _camera.pixelWidth / 2;
         int height = _camera.pixelHeight / 2;
-        var format = RenderTextureFormat.Default;
+        var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
 
         //Bypass bloom if no need
         if (bloomSettings.maxIterations == 0 || bloomSettings.intensity <= 0 ||
             height < bloomSettings.downscaleLimit * 2 ||
             width < bloomSettings.downscaleLimit * 2)
         {
-            Draw(sourceRT, BuiltinRenderTextureType.CameraTarget, PostFXSettings.FXPass.Copy);
-            _buffer.EndSample("Bloom");
-            return;
+            return false;
         }
 
+        _buffer.BeginSample("Bloom");
         //Calu bloom parameters
         Vector4 threshold;
         threshold.x = Mathf.GammaToLinearSpace(bloomSettings.threshold);
@@ -100,7 +110,7 @@ public partial class PostFXStack
         _buffer.SetGlobalFloat(_bloomIntensityId, 1f);
 
         _buffer.GetTemporaryRT(_bloomPrefilterRT, width, height, 0, FilterMode.Bilinear, format);
-        Draw(sourceRT, _bloomPrefilterRT, PostFXSettings.FXPass.BloomPrefilterPassFragment);
+        Draw(sourceId, _bloomPrefilterRT, PostFXSettings.FXPass.BloomPrefilterPassFragment);
         width /= 2;
         height /= 2;
 
@@ -150,12 +160,36 @@ public partial class PostFXStack
             _buffer.ReleaseTemporaryRT(_bloomPyramidId);
         }
 
-        _buffer.SetGlobalTexture(_fxSourceId2, sourceRT);
-        Draw(fromRT, BuiltinRenderTextureType.CameraTarget, PostFXSettings.FXPass.BloomCombine);
+        _buffer.SetGlobalTexture(_fxSourceId2, sourceId);
+        _buffer.GetTemporaryRT(_bloomResultRT, _camera.pixelWidth, _camera.pixelHeight, 0, FilterMode.Bilinear, format);
+        Draw(fromRT, _bloomResultRT, PostFXSettings.FXPass.BloomCombine);
         _buffer.ReleaseTemporaryRT(fromRT);
         _buffer.ReleaseTemporaryRT(_bloomPrefilterRT);
-
         _buffer.EndSample("Bloom");
+
+        return true;
+    }
+
+    #endregion
+
+    #region DoToneMapping
+
+    private void DoToneMapping(int sourceId)
+    {
+        PostFXSettings.FXPass pass;
+        switch (_settings.toneMappingMode)
+        {
+            case PostFXSettings.ToneMappingMode.None:
+                pass = PostFXSettings.FXPass.Copy;
+                break;
+            case PostFXSettings.ToneMappingMode.ACES:
+                pass = PostFXSettings.FXPass.ToneMappingACES;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
     }
 
     #endregion

@@ -20,6 +20,7 @@ public class PostFXSettings : ScriptableObject
 
     [SerializeField] private BloomSettings _bloomSettings = default;
     public BloomSettings Bloom => _bloomSettings;
+    public ToneMappingMode toneMappingMode;
 
     public Material Material
     {
@@ -41,6 +42,13 @@ public class PostFXSettings : ScriptableObject
         BloomHorizontal,
         BloomPrefilterPassFragment,
         BloomVertical,
-        Copy
+        Copy,
+        ToneMappingACES
+    }
+
+    public enum ToneMappingMode
+    {
+        None,
+        ACES
     }
 }

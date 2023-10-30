@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d952f5784b4930749bf4b240a65c1ba5, type: 3}
   m_Name: Default Simple Render Pipeline Asset
   m_EditorClassIdentifier: 
-  _postFXSettings: {fileID: 11400000, guid: 7f2614b38b11803498bc6ddf805ad047, type: 2}
+  postFXSettings: {fileID: 11400000, guid: 7f2614b38b11803498bc6ddf805ad047, type: 2}
   allowHDR: 1
   renderScale: 1

@@ -1,15 +1,23 @@
+using SimpleRP.Runtime.PostProcessing;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-[CreateAssetMenu(menuName = "Rendering/Custom Render Pipeline")]
-public class CustomRenderPipelineAsset : RenderPipelineAsset
+namespace SimpleRP.Runtime
 {
-    [SerializeField] private PostFXSettings _postFXSettings = default;
-    [SerializeField] private bool allowHDR = true;
-    [SerializeField] [Range(0.1f, 2f)] private float renderScale = 1f;
-
-    protected override RenderPipeline CreatePipeline()
+    [CreateAssetMenu(menuName = "Rendering/Custom Render Pipeline")]
+    public class SimpleRenderPipelineAsset : RenderPipelineAsset
     {
-        return new CustomRenderPipeline(_postFXSettings, allowHDR, renderScale);
+        [SerializeField] private PostFXSettings postFXSettings = default;
+        [SerializeField] private bool allowHDR = true;
+        [SerializeField] [Range(0.1f, 2f)] private float renderScale = 1f;
+
+        protected override RenderPipeline CreatePipeline()
+        {
+            SimpleRenderPipelineParameter.PostFXSettings = postFXSettings;
+            SimpleRenderPipelineParameter.AllowHDR = allowHDR;
+            SimpleRenderPipelineParameter.RenderScale = renderScale;
+
+            return new SimpleRenderPipeline();
+        }
     }
 }

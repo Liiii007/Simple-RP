@@ -1,54 +1,57 @@
 ﻿using System;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Rendering/Custom Post FX Settings")]
-public class PostFXSettings : ScriptableObject
+namespace SimpleRP.Runtime.PostProcessing
 {
-    [Serializable]
-    public struct BloomSettings
+    [CreateAssetMenu(menuName = "Rendering/Custom Post FX Settings")]
+    public class PostFXSettings : ScriptableObject
     {
-        [Range(0, 16)] public int maxIterations;
-        [Min(1)] public int downscaleLimit;
-        [Min(0f)] public float threshold;
-        [Range(0f, 1f)] public float thresholdKnee;
-
-        [Min(0f)] public float intensity;
-    }
-
-    [SerializeField] private Shader shader = default;
-    [NonSerialized] private Material _material;
-
-    [SerializeField] private BloomSettings _bloomSettings = default;
-    public BloomSettings Bloom => _bloomSettings;
-    public ToneMappingMode toneMappingMode;
-
-    public Material Material
-    {
-        get
+        [Serializable]
+        public struct BloomSettings
         {
-            if (_material == null && shader != null)
-            {
-                _material = new Material(shader);
-                _material.hideFlags = HideFlags.HideAndDontSave;
-            }
+            [Range(0, 16)] public int maxIterations;
+            [Min(1)] public int downscaleLimit;
+            [Min(0f)] public float threshold;
+            [Range(0f, 1f)] public float thresholdKnee;
 
-            return _material;
+            [Min(0f)] public float intensity;
         }
-    }
 
-    public enum FXPass
-    {
-        BloomCombine,
-        BloomHorizontal,
-        BloomPrefilterPassFragment,
-        BloomVertical,
-        Copy,
-        ToneMappingACES
-    }
+        [SerializeField] private Shader shader = default;
+        [NonSerialized] private Material _material;
 
-    public enum ToneMappingMode
-    {
-        None,
-        ACES
+        [SerializeField] private BloomSettings _bloomSettings = default;
+        public BloomSettings Bloom => _bloomSettings;
+        public ToneMappingMode toneMappingMode;
+
+        public Material Material
+        {
+            get
+            {
+                if (_material == null && shader != null)
+                {
+                    _material = new Material(shader);
+                    _material.hideFlags = HideFlags.HideAndDontSave;
+                }
+
+                return _material;
+            }
+        }
+
+        public enum FXPass
+        {
+            BloomCombine,
+            BloomHorizontal,
+            BloomPrefilterPassFragment,
+            BloomVertical,
+            Copy,
+            ToneMappingACES
+        }
+
+        public enum ToneMappingMode
+        {
+            None,
+            ACES
+        }
     }
 }

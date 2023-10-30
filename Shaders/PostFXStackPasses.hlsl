@@ -6,7 +6,12 @@
 
 float4 _ProjectionParams;
 float4 _PostFXSource_TexelSize;
-float4 _BloomThreshold;
+float4 _Params; // x: scatter, y: clamp, z: threshold (linear), w: threshold knee
+
+#define Scatter             _Params.x
+#define ClampMax            _Params.y
+#define Threshold           _Params.z
+#define ThresholdKnee       _Params.w
 float _BloomIntensity;
 
 TEXTURE2D(_PostFXSource);
@@ -70,69 +75,81 @@ float4 CopyPassFragment(Varyings input) : SV_TARGET
     return screen;
 }
 
-float4 BloomHorizontalPassFragment(Varyings input) : SV_TARGET
+half4 BloomHorizontalPassFragment(Varyings input) : SV_TARGET
 {
-    float3 color = 0.0;
-    float offsets[] = {
-        -3.23076923, -1.38461538, 0.0, 1.38461538, 3.23076923
-    };
-    float weights[] = {
-        0.07027027, 0.31621622, 0.22702703, 0.31621622, 0.07027027
-    };
+    float texelSize = _PostFXSource_TexelSize.x * 2.0;
+    float2 uv = input.screenUV;
 
-    for (int i = 0; i < 5; i++)
-    {
-        float offset = offsets[i] * 2.0 * GetSourceTexelSize().x;
-        color += GetSource(input.screenUV + float2(offset, 0.0)).rgb * weights[i];
-    }
-    return float4(color, 1.0);
+    // 9-tap gaussian blur on the downsampled source
+    half3 c0 = GetSource(uv - float2(texelSize * 4.0, 0.0));
+    half3 c1 = GetSource(uv - float2(texelSize * 3.0, 0.0));
+    half3 c2 = GetSource(uv - float2(texelSize * 2.0, 0.0));
+    half3 c3 = GetSource(uv - float2(texelSize * 1.0, 0.0));
+    half3 c4 = GetSource(uv);
+    half3 c5 = GetSource(uv + float2(texelSize * 1.0, 0.0));
+    half3 c6 = GetSource(uv + float2(texelSize * 2.0, 0.0));
+    half3 c7 = GetSource(uv + float2(texelSize * 3.0, 0.0));
+    half3 c8 = GetSource(uv + float2(texelSize * 4.0, 0.0));
+
+    half3 color = c0 * 0.01621622 + c1 * 0.05405405 + c2 * 0.12162162 + c3 * 0.19459459
+        + c4 * 0.22702703
+        + c5 * 0.19459459 + c6 * 0.12162162 + c7 * 0.05405405 + c8 * 0.01621622;
+
+    return half4(color, 1.0);
 }
 
-float4 BloomVerticalPassFragment(Varyings input) : SV_TARGET
+half4 BloomVerticalPassFragment(Varyings input) : SV_TARGET
 {
-    float3 color = 0.0;
-    float offsets[] = {
-        -3.23076923, -1.38461538, 0.0, 1.38461538, 3.23076923
-    };
-    float weights[] = {
-        0.07027027, 0.31621622, 0.22702703, 0.31621622, 0.07027027
-    };
+    float texelSize = _PostFXSource_TexelSize.y;
+    float2 uv = input.screenUV;
 
-    for (int i = 0; i < 5; i++)
-    {
-        float offset = offsets[i] * GetSourceTexelSize().y;
-        color += GetSource(input.screenUV + float2(0.0, offset)).rgb * weights[i];
-    }
-    return float4(color, 1.0);
+    // Optimized bilinear 5-tap gaussian on the same-sized source (9-tap equivalent)
+    half3 c0 = GetSource(uv - float2(0.0, texelSize * 3.23076923));
+    half3 c1 = GetSource(uv - float2(0.0, texelSize * 1.38461538));
+    half3 c2 = GetSource(uv);
+    half3 c3 = GetSource(uv + float2(0.0, texelSize * 1.38461538));
+    half3 c4 = GetSource(uv + float2(0.0, texelSize * 3.23076923));
+
+    half3 color = c0 * 0.07027027 + c1 * 0.31621622
+        + c2 * 0.22702703
+        + c3 * 0.31621622 + c4 * 0.07027027;
+
+    return half4(color, 1);
 }
 
-float4 BloomCombinePassFragment(Varyings input) : SV_TARGET
+half4 BloomCombinePassFragment(Varyings input) : SV_TARGET
 {
-    float3 lowRes = GetSource(input.screenUV).rgb;
-    float3 highRes = GetSource2(input.screenUV).rgb;
-    return float4(lowRes * _BloomIntensity + highRes, 1.0);
+    float3 lowRes = GetSource2(input.screenUV).rgb;
+    float3 highRes = GetSource(input.screenUV).rgb;
+    return half4(lerp(highRes, lowRes, 0.7), 1);
 }
 
-float3 ApplyBloomThreshold(float3 color)
+half4 BloomPrefilterPassFragment(Varyings input) : SV_TARGET
 {
-    float brightness = Max3(color.r, color.g, color.b);
-    float soft = brightness + _BloomThreshold.y;
-    soft = clamp(soft, 0.0, _BloomThreshold.z);
-    soft = soft * soft * _BloomThreshold.w;
-    float contribution = max(soft, brightness - _BloomThreshold.x);
-    contribution /= max(brightness, 0.00001);
-    return color * contribution;
+    half3 color = GetSource(input.screenUV).rgb;
+
+    // User controlled clamp to limit crazy high broken spec
+    color = min(ClampMax, color);
+
+    // Thresholding
+    half brightness = Max3(color.r, color.g, color.b);
+    half softness = clamp(brightness - Threshold + ThresholdKnee, 0.0, 2.0 * ThresholdKnee);
+    softness = (softness * softness) / (4.0 * ThresholdKnee + 1e-4);
+    half multiplier = max(brightness - Threshold, softness) / max(brightness, 1e-4);
+    color *= multiplier;
+
+    // Clamp colors to positive once in prefilter. Encode can have a sqrt, and sqrt(-x) == NaN. Up/Downsample passes would then spread the NaN.
+    color = max(color, 0);
+    return half4(color, 1.0);
 }
 
-float4 BloomPrefilterPassFragment(Varyings input) : SV_TARGET
+half4 ToneMappingACESPassFragment(Varyings input) : SV_TARGET
 {
-    float3 color = ApplyBloomThreshold(GetSource(input.screenUV).rgb);
-    return float4(color, 1.0);
-}
+    half4 color = GetSource(input.screenUV);
+    color += GetSource2(input.screenUV) * _BloomIntensity;
 
-float4 ToneMappingACESPassFragment(Varyings input) : SV_TARGET
-{
-    float4 color = GetSource(input.screenUV);
+    color.a = 1;
+
     color.rgb = min(color.rgb, 60.0);
     color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
     return color;

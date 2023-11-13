@@ -5,6 +5,7 @@
 
 CBUFFER_START(UnityPerMaterial)
     float4 _BaseColor;
+    float _Intensity;
 CBUFFER_END
 
 struct Attributes
@@ -27,9 +28,11 @@ Varyings UnlitPassVertex(Attributes input)
     return output;
 }
 
-half4 UnlitPassFragment(Varyings input) : SV_TARGET
+float4 UnlitPassFragment(Varyings input) : SV_TARGET
 {
-    return _BaseColor;
+    float4 color = _BaseColor * _Intensity;
+    color.a = _BaseColor.a;
+    return color;
 }
 
 #endif

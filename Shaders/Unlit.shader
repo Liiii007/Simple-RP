@@ -4,6 +4,7 @@
     Properties
     {
         _BaseColor("Color", Color) = (1.0, 1.0, 1.0, 1.0)
+        _Intensity("Intensity", Float) = 1.0
     }
 
     SubShader
@@ -15,8 +16,7 @@
             ZTest LEqual
 
             HLSLPROGRAM
-            #pragma shader_feature _CLIPPING
-            #pragma multi_compile_instancing
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex UnlitPassVertex
             #pragma fragment UnlitPassFragment
             #include "UnlitPass.hlsl"

@@ -24,7 +24,6 @@ Shader "Simple/CustomLineShader"
 
         Pass
         {
-
             HLSLPROGRAM
             #pragma vertex DefaultPassVertex
             #pragma fragment OuterPassFragment

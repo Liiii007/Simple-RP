@@ -15,6 +15,7 @@ Shader "Custom RP/ColorDraw"
             ZTest LEqual
 
             HLSLPROGRAM
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex UnlitPassVertex
             #pragma fragment UnlitPassFragment
             #include "../../ShaderLibrary/Common.hlsl"

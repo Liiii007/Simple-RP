@@ -3,10 +3,9 @@ Shader "Simple/CustomLineShader"
     Properties
     {
         _Color ("Color", Color) = (1,1,1,1)
-        _BoundColor ("BoundColor", Color) = (1,1,1,1)
-        _Radius ("Radius", float) = 0.5
-        _Ratio ("Ratio", float) = 1
-        _Width ("Width", float) = 0.1
+        _BoundColor ("BoundColor", Color) = (0,0,0,1)
+        _Radius ("Radius", float) = 0
+        _BoundWidth ("BoundWidth", float) = 0
         _AARate ("AA Rate", float) = 1
     }
 
@@ -54,8 +53,7 @@ Shader "Simple/CustomLineShader"
             float4 _Color;
             float4 _BoundColor;
             float _Radius;
-            float _Ratio;
-            float _Width;
+            float _BoundWidth;
             float _AARate;
 
             Varyings UnlitVertex(Attributes v)
@@ -73,7 +71,7 @@ Shader "Simple/CustomLineShader"
                 float _Delta = 0.01f * _AARate;
                 float sdf = LineSegmentSDF(i.pos, i.a, i.b);
                 float inner = sdf;
-                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius);
+                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius * (1 - _BoundWidth));
                 return half4(_Color.xyz, inner);
             }
             ENDHLSL
@@ -107,8 +105,7 @@ Shader "Simple/CustomLineShader"
             float4 _Color;
             float4 _BoundColor;
             float _Radius;
-            float _Ratio;
-            float _Width;
+            float _BoundWidth;
             float _AARate;
 
             Varyings UnlitVertex(Attributes v)
@@ -126,7 +123,7 @@ Shader "Simple/CustomLineShader"
                 float _Delta = 0.01f * _AARate;
                 float sdf = LineSegmentSDF(i.pos, i.a, i.b);
                 float inner = sdf;
-                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius + 0.1f);
+                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius);
                 return half4(_BoundColor.xyz, inner);
             }
             ENDHLSL

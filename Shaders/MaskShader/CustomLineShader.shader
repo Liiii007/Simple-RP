@@ -2,8 +2,9 @@ Shader "Simple/CustomLineShader"
 {
     Properties
     {
-        _Color ("Color", Color) = (1,1,1,1)
+        [HDR] _Color ("Color", Color) = (1,1,1,1)
         _BoundColor ("BoundColor", Color) = (0,0,0,1)
+        _Intensity ("Intensity", float) = 1
         _Radius ("Radius", float) = 0
         _BoundWidth ("BoundWidth", float) = 0
         _AARate ("AA Rate", float) = 1
@@ -52,6 +53,7 @@ Shader "Simple/CustomLineShader"
 
             float4 _Color;
             float4 _BoundColor;
+            float _Intensity;
             float _Radius;
             float _BoundWidth;
             float _AARate;
@@ -71,8 +73,10 @@ Shader "Simple/CustomLineShader"
                 float _Delta = 0.01f * _AARate;
                 float sdf = LineSegmentSDF(i.pos, i.a, i.b);
                 float inner = sdf;
-                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius * (1 - _BoundWidth));
-                return half4(_Color.xyz, inner);
+                inner = smoothstep(inner - _Delta, inner + _Delta, _Radius * (1 - _BoundWidth) - 0.1);
+                float4 color = _Color;
+                color *= _Intensity;
+                return half4(color.rgb, inner * _Color.a);
             }
             ENDHLSL
         }
@@ -104,6 +108,7 @@ Shader "Simple/CustomLineShader"
 
             float4 _Color;
             float4 _BoundColor;
+            float _Intensity;
             float _Radius;
             float _BoundWidth;
             float _AARate;
@@ -124,7 +129,7 @@ Shader "Simple/CustomLineShader"
                 float sdf = LineSegmentSDF(i.pos, i.a, i.b);
                 float inner = sdf;
                 inner = smoothstep(inner - _Delta, inner + _Delta, _Radius);
-                return half4(_BoundColor.xyz, inner);
+                return half4(_BoundColor.xyz, inner * _Color.a);
             }
             ENDHLSL
         }

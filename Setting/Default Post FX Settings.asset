@@ -18,5 +18,5 @@ MonoBehaviour:
     downscaleLimit: 1
     threshold: 1
     thresholdKnee: 0.5
-    intensity: 1
+    intensity: 0.7
   toneMappingMode: 1

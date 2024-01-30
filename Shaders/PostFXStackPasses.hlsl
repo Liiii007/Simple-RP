@@ -3,6 +3,7 @@
 
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Color.hlsl"
+#include "CustomACES.hlsl"
 
 float4 _ProjectionParams;
 float4 _PostFXSource_TexelSize;
@@ -148,10 +149,10 @@ half4 ToneMappingACESPassFragment(Varyings input) : SV_TARGET
     half4 color = GetSource(input.screenUV);
     color += GetSource2(input.screenUV) * _BloomIntensity;
 
+    color.rgb = clamp(color.rgb, 0, 60);
+    color.rgb = ACESFitted(color.rgb);
     color.a = 1;
 
-    color.rgb = min(color.rgb, 60.0);
-    color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
     return color;
 }
 

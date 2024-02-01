@@ -19,21 +19,34 @@ TEXTURE2D(_PostFXSource);
 TEXTURE2D(_PostFXSource2);
 SAMPLER(sampler_linear_clamp);
 
-struct Varyings
+TEXTURE2D(_MainTex);
+SAMPLER(sampler_MainTex);
+float4 _MainTex_TexelSize;
+
+struct Attributes
 {
     float4 positionCS : SV_POSITION;
-    float2 screenUV : VAR_SCREEN_UV;
+    float3 positionWS : VAR_WORLD_POSITION;
+    float3 normalWS : VAR_NORMAL;
+    float2 uv : VAR_BASE_UV;
+};
+
+struct Varying
+{
+    float3 position : POSITION;
+    float3 normal : NORMAL;
+    float2 uv : TEXCOORD0;
 };
 
 float4 GetSource(float2 screenUV)
 {
-    return SAMPLE_TEXTURE2D_LOD(_PostFXSource, sampler_linear_clamp, screenUV, 0);
+    return SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_MainTex, screenUV, 0);
 }
 
 float4 GetSourceBicubic(float2 screenUV)
 {
     return SampleTexture2DBicubic(
-        TEXTURE2D_ARGS(_PostFXSource, sampler_linear_clamp), screenUV,
+        TEXTURE2D_ARGS(_MainTex, sampler_MainTex), screenUV,
         _PostFXSource_TexelSize.zwxy, 1.0, 0.0
     );
 }
@@ -49,37 +62,28 @@ float4 GetSourceTexelSize()
 }
 
 //Generate triangle which cover whole screen
-Varyings DefaultPassVertex(uint vertexID : SV_VertexID)
+Attributes DefaultPassVertex(Varying input)
 {
-    Varyings output;
-    output.positionCS = float4(
-        vertexID <= 1 ? -1.0 : 3.0,
-        vertexID == 1 ? 3.0 : -1.0,
-        0.0, 1.0
-    );
-    output.screenUV = float2(
-        vertexID <= 1 ? 0.0 : 2.0,
-        vertexID == 1 ? 2.0 : 0.0
-    );
-
-    //Fix flip of scene view
-    if (_ProjectionParams.x < 0.0)
-    {
-        output.screenUV.y = 1.0 - output.screenUV.y;
-    }
+    Attributes output;
+    output.positionWS = TransformObjectToWorld(input.position);
+    output.positionCS = TransformWorldToHClip(output.positionWS);
+    output.normalWS = TransformObjectToWorldNormal(input.normal);
+    output.uv = input.uv;
     return output;
 }
 
-float4 CopyPassFragment(Varyings input) : SV_TARGET
+float4 CopyPassFragment(Attributes input) : SV_TARGET
 {
-    float4 screen = GetSource(input.screenUV);
+    float4 screen = GetSource(input.uv);
     return screen;
 }
 
-half4 BloomHorizontalPassFragment(Varyings input) : SV_TARGET
+float _BlurRandom;
+
+half4 BloomHorizontalPassFragment(Attributes input) : SV_TARGET
 {
-    float texelSize = _PostFXSource_TexelSize.x * 2.0;
-    float2 uv = input.screenUV;
+    float texelSize = _MainTex_TexelSize.x;
+    float2 uv = input.uv;
 
     // 9-tap gaussian blur on the downsampled source
     half3 c0 = GetSource(uv - float2(texelSize * 4.0, 0.0));
@@ -96,13 +100,17 @@ half4 BloomHorizontalPassFragment(Varyings input) : SV_TARGET
         + c4 * 0.22702703
         + c5 * 0.19459459 + c6 * 0.12162162 + c7 * 0.05405405 + c8 * 0.01621622;
 
+    float v = 1 / 9.0;
+
+    color = c0 * v + c1 * v + c2 * v + c3 * v + c4 * v + c5 * v + c6 * v + c7 * v + c8 * v;
+
     return half4(color, 1.0);
 }
 
-half4 BloomVerticalPassFragment(Varyings input) : SV_TARGET
+half4 BloomVerticalPassFragment(Attributes input) : SV_TARGET
 {
-    float texelSize = _PostFXSource_TexelSize.y;
-    float2 uv = input.screenUV;
+    float texelSize = _MainTex_TexelSize.y;
+    float2 uv = input.uv;
 
     // Optimized bilinear 5-tap gaussian on the same-sized source (9-tap equivalent)
     half3 c0 = GetSource(uv - float2(0.0, texelSize * 3.23076923));
@@ -115,19 +123,21 @@ half4 BloomVerticalPassFragment(Varyings input) : SV_TARGET
         + c2 * 0.22702703
         + c3 * 0.31621622 + c4 * 0.07027027;
 
+    color = c0 * 0.2 + c1 * 0.2 + c2 * 0.2 + c3 * 0.2 + c4 * 0.2;
+
     return half4(color, 1);
 }
 
-half4 BloomCombinePassFragment(Varyings input) : SV_TARGET
+half4 BloomCombinePassFragment(Attributes input) : SV_TARGET
 {
-    float3 lowRes = GetSource2(input.screenUV).rgb;
-    float3 highRes = GetSource(input.screenUV).rgb;
+    float3 lowRes = GetSource2(input.uv).rgb;
+    float3 highRes = GetSource(input.uv).rgb;
     return half4(lerp(highRes, lowRes, 0.7), 1);
 }
 
-half4 BloomPrefilterPassFragment(Varyings input) : SV_TARGET
+half4 BloomPrefilterPassFragment(Attributes input) : SV_TARGET
 {
-    half3 color = GetSource(input.screenUV).rgb;
+    half3 color = GetSource(input.uv).rgb;
 
     // User controlled clamp to limit crazy high broken spec
     color = min(ClampMax, color);
@@ -144,10 +154,10 @@ half4 BloomPrefilterPassFragment(Varyings input) : SV_TARGET
     return half4(color, 1.0);
 }
 
-half4 ToneMappingACESPassFragment(Varyings input) : SV_TARGET
+half4 ToneMappingACESPassFragment(Attributes input) : SV_TARGET
 {
-    half4 color = GetSource(input.screenUV);
-    color += GetSource2(input.screenUV) * _BloomIntensity;
+    half4 color = GetSource(input.uv);
+    color += GetSource2(input.uv) * _BloomIntensity;
 
     color.rgb = clamp(color.rgb, 0, 60);
     color.rgb = ACESFitted(color.rgb);

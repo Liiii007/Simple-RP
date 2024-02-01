@@ -1,5 +1,10 @@
 ﻿Shader "Hidden/Custom RP/Post FX Stack"
 {
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+    }
+
     SubShader
     {
         Cull Off

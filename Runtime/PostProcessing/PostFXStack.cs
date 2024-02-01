@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
+using Random = UnityEngine.Random;
 
 namespace SimpleRP.Runtime.PostProcessing
 {
@@ -14,7 +17,6 @@ namespace SimpleRP.Runtime.PostProcessing
         private PostFXSettings _settings;
         private bool _useHDR;
 
-        private int _fxSourceId = Shader.PropertyToID("_PostFXSource");
         private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
 
         private int[] _bloomMipUp;
@@ -60,6 +62,8 @@ namespace SimpleRP.Runtime.PostProcessing
 
         public void Render(int sourceId)
         {
+            // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
+
             if (DoBloom(sourceId))
             {
                 _buffer.SetGlobalTexture(_fxSourceId2, _bloomResultRT);
@@ -71,17 +75,45 @@ namespace SimpleRP.Runtime.PostProcessing
                 DoToneMapping(sourceId);
             }
 
+            foreach (var (from, to) in blurRTQueue)
+            {
+                DoBlur(from, to);
+            }
+
+            foreach (var (from, to) in blurTextureQueue)
+            {
+                DoBlur(from, to);
+            }
+
+            blurRTQueue.Clear();
+
             _context.ExecuteCommandBuffer(_buffer);
             _buffer.Clear();
         }
 
+        private static List<(RenderTargetIdentifier, RenderTargetIdentifier)> blurRTQueue = new();
+        private static List<(Texture, RenderTargetIdentifier)> blurTextureQueue = new();
+
+        public static void GetBlurTexture(Texture to, Texture from = null)
+        {
+            if (from == null)
+            {
+                blurRTQueue.Add((BuiltinRenderTextureType.CameraTarget, to));
+            }
+            else
+            {
+                blurTextureQueue.Add((from, to));
+            }
+        }
+
         private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFXSettings.FXPass pass)
         {
-            //Set origin texture
-            _buffer.SetGlobalTexture(_fxSourceId, from);
-            //Then draw to render target
-            _buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-            _buffer.DrawProcedural(Matrix4x4.identity, _settings.Material, (int)pass, MeshTopology.Triangles, 3);
+            _buffer.Blit(from, to, _settings.Material, (int)pass);
+        }
+
+        private void Draw(Texture from, RenderTargetIdentifier to, PostFXSettings.FXPass pass)
+        {
+            _buffer.Blit(from, to, _settings.Material, (int)pass);
         }
 
         #region DoBloom
@@ -128,7 +160,8 @@ namespace SimpleRP.Runtime.PostProcessing
             {
                 int cw = width >> i;
                 int ch = height >> i;
-                _buffer.GetTemporaryRT(_bloomMipUp[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear, format);
+                _buffer.GetTemporaryRT(_bloomMipUp[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
+                    format);
                 _buffer.GetTemporaryRT(_bloomMipDown[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
                     format);
             }
@@ -169,62 +202,96 @@ namespace SimpleRP.Runtime.PostProcessing
             }
 
             return true;
+        }
 
-            //
-            // _buffer.GetTemporaryRT(_bloomPrefilterRT, width, height, 0, FilterMode.Bilinear, format);
-            //
-            // int fromRT = _bloomPrefilterRT;
-            // int toRT = _bloomPyramidId + 1;
-            //
-            // int i;
-            // //Down sample
-            // for (i = 0; i < bloomSettings.maxIterations; i++)
-            // {
-            //     if (height < bloomSettings.downscaleLimit || width < bloomSettings.downscaleLimit)
-            //     {
-            //         break;
-            //     }
-            //
-            //     int midId = toRT - 1;
-            //     _buffer.GetTemporaryRT(midId, width, height, 0, FilterMode.Bilinear, format);
-            //     _buffer.GetTemporaryRT(toRT, width, height, 0, FilterMode.Bilinear, format);
-            //     Draw(fromRT, midId, PostFXSettings.FXPass.BloomHorizontal);
-            //     Draw(midId, toRT, PostFXSettings.FXPass.BloomVertical);
-            //     fromRT = toRT;
-            //     toRT += 2;
-            //     width /= 2;
-            //     height /= 2;
-            // }
-            //
-            // //Set intensity when upsampleing when combine
-            // _buffer.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
-            // if (i > 1)
-            // {
-            //     _buffer.ReleaseTemporaryRT(fromRT - 1); //Release mid RT(fromId points to last toId)
-            //     toRT -= 5;
-            //
-            //     //Up sample 
-            //     for (i -= 1; i > 0; i--)
-            //     {
-            //         _buffer.SetGlobalTexture(_fxSourceId2, toRT + 1);
-            //         Draw(fromRT, toRT, PostFXSettings.FXPass.BloomCombine);
-            //         _buffer.ReleaseTemporaryRT(fromRT);
-            //         _buffer.ReleaseTemporaryRT(toRT - 1);
-            //         fromRT = toRT;
-            //         toRT -= 2;
-            //     }
-            // }
-            // else
-            // {
-            //     _buffer.ReleaseTemporaryRT(_bloomPyramidId);
-            // }
-            //
-            // _buffer.SetGlobalTexture(_fxSourceId2, sourceId);
-            // _buffer.GetTemporaryRT(_bloomResultRT, _camera.pixelWidth, _camera.pixelHeight, 0, FilterMode.Bilinear, format);
-            // Draw(fromRT, _bloomResultRT, PostFXSettings.FXPass.BloomCombine);
-            // _buffer.ReleaseTemporaryRT(fromRT);
-            // _buffer.ReleaseTemporaryRT(_bloomPrefilterRT);
-            // _buffer.EndSample("Bloom");
+        private int[] blurMips;
+
+        private bool DoBlur(object sourceId, RenderTargetIdentifier targetId)
+        {
+            if (blurMips == null)
+            {
+                blurMips = new int[32];
+
+                for (int i = 0; i < 32; i++)
+                {
+                    blurMips[i] = Shader.PropertyToID("_BlurTexture_SimpleRP" + i);
+                }
+            }
+
+            int width = _camera.pixelWidth >> 1;
+            int height = _camera.pixelHeight >> 1;
+            var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+
+            int iterations = 5;
+
+            //1/2 RT
+            _buffer.GetTemporaryRT(blurMips[0], width, height, 0, FilterMode.Bilinear, format);
+
+            for (int i = 1; i < iterations; i++)
+            {
+                int cw = width >> i;
+                int ch = height >> i;
+
+                _buffer.GetTemporaryRT
+                (
+                    blurMips[i * 2 - 1],
+                    Mathf.Max(1, cw), Mathf.Max(1, ch),
+                    0, FilterMode.Bilinear, format
+                );
+
+                _buffer.GetTemporaryRT
+                (
+                    blurMips[i * 2],
+                    Mathf.Max(1, cw), Mathf.Max(1, ch),
+                    0, FilterMode.Bilinear, format
+                );
+            }
+
+            _buffer.GetTemporaryRT
+            (
+                blurMips[iterations * 2 - 1],
+                Mathf.Max(1, width >> 4), Mathf.Max(1, height >> 4),
+                0, FilterMode.Bilinear, format
+            );
+
+            if (sourceId is RenderTargetIdentifier rti)
+            {
+                Draw(rti, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
+            }
+            else if (sourceId is Texture texture)
+            {
+                Draw(texture, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
+            }
+            else
+            {
+                Debug.LogError("Unsupported type");
+                return false;
+            }
+
+            Draw(blurMips[0], blurMips[1], PostFXSettings.FXPass.BloomVertical);
+
+            for (int i = 1; i < iterations; i++)
+            {
+                Profiler.BeginSample("Blur" + i);
+                Draw
+                (
+                    blurMips[i * 2 - 1], blurMips[i * 2],
+                    PostFXSettings.FXPass.BloomHorizontal
+                );
+                Draw
+                (
+                    blurMips[i * 2], blurMips[i * 2 + 1],
+                    PostFXSettings.FXPass.BloomVertical
+                );
+                Profiler.EndSample();
+            }
+
+            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.Copy);
+
+            for (int i = 0; i < iterations * 2; i++)
+            {
+                _buffer.ReleaseTemporaryRT(blurMips[i]);
+            }
 
             return true;
         }

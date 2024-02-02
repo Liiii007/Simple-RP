@@ -81,7 +81,7 @@ Shader "Simple/CircleMask"
                 color *= float4(1, 1, 1, pass_big);
                 color = pass_small * color + (1 - pass_small) * _BoundColor;
 
-                color.a = pass_big;
+                color.a = pass_big * _Color.a;
                 return color;
             }
             ENDHLSL

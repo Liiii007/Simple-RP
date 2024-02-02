@@ -75,14 +75,14 @@ namespace SimpleRP.Runtime.PostProcessing
                 DoToneMapping(sourceId);
             }
 
-            foreach (var (from, to) in blurRTQueue)
+            foreach (var (from, to, iteration) in blurRTQueue)
             {
-                DoBlur(from, to);
+                DoBlur(from, to, iteration);
             }
 
-            foreach (var (from, to) in blurTextureQueue)
+            foreach (var (from, to, iteration) in blurTextureQueue)
             {
-                DoBlur(from, to);
+                DoBlur(from, to, iteration);
             }
 
             blurRTQueue.Clear();
@@ -91,18 +91,18 @@ namespace SimpleRP.Runtime.PostProcessing
             _buffer.Clear();
         }
 
-        private static List<(RenderTargetIdentifier, RenderTargetIdentifier)> blurRTQueue = new();
-        private static List<(Texture, RenderTargetIdentifier)> blurTextureQueue = new();
+        private static List<(RenderTargetIdentifier, RenderTargetIdentifier, int)> blurRTQueue = new();
+        private static List<(Texture, RenderTargetIdentifier, int)> blurTextureQueue = new();
 
-        public static void GetBlurTexture(Texture to, Texture from = null)
+        public static void GetBlurTexture(Texture to, Texture from = null, int iteration = 5)
         {
             if (from == null)
             {
-                blurRTQueue.Add((BuiltinRenderTextureType.CameraTarget, to));
+                blurRTQueue.Add((BuiltinRenderTextureType.CameraTarget, to, iteration));
             }
             else
             {
-                blurTextureQueue.Add((from, to));
+                blurTextureQueue.Add((from, to, iteration));
             }
         }
 
@@ -206,8 +206,10 @@ namespace SimpleRP.Runtime.PostProcessing
 
         private int[] blurMips;
 
-        private bool DoBlur(object sourceId, RenderTargetIdentifier targetId)
+        private bool DoBlur(object sourceId, RenderTargetIdentifier targetId, int iterations)
         {
+            iterations = Mathf.Max(1, iterations);
+
             if (blurMips == null)
             {
                 blurMips = new int[32];
@@ -221,8 +223,6 @@ namespace SimpleRP.Runtime.PostProcessing
             int width = _camera.pixelWidth >> 1;
             int height = _camera.pixelHeight >> 1;
             var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-
-            int iterations = 5;
 
             //1/2 RT
             _buffer.GetTemporaryRT(blurMips[0], width, height, 0, FilterMode.Bilinear, format);

@@ -86,6 +86,7 @@ namespace SimpleRP.Runtime.PostProcessing
             }
 
             blurRTQueue.Clear();
+            blurTextureQueue.Clear();
 
             _context.ExecuteCommandBuffer(_buffer);
             _buffer.Clear();
@@ -93,6 +94,7 @@ namespace SimpleRP.Runtime.PostProcessing
 
         private static List<(RenderTargetIdentifier, RenderTargetIdentifier, int)> blurRTQueue = new();
         private static List<(Texture, RenderTargetIdentifier, int)> blurTextureQueue = new();
+        public static Dictionary<string, RenderTexture> _blurTextures = new();
 
         public static void GetBlurTexture(Texture to, Texture from = null, int iteration = 5)
         {
@@ -103,6 +105,28 @@ namespace SimpleRP.Runtime.PostProcessing
             else
             {
                 blurTextureQueue.Add((from, to, iteration));
+            }
+        }
+
+        public static void RegisterBlurTexture(string path, RenderTexture rt)
+        {
+            if (_blurTextures.TryGetValue(path, out _))
+            {
+                Debug.LogError($"Blur texture {path} already exists!");
+            }
+
+            _blurTextures[path] = rt;
+        }
+
+        public static void RemoveBlurTexture(string path)
+        {
+            if (_blurTextures.TryGetValue(path, out var rt))
+            {
+                _blurTextures.Remove(path);
+                if (rt != null)
+                {
+                    rt.Release();
+                }
             }
         }
 

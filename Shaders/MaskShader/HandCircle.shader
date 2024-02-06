@@ -38,12 +38,14 @@ Shader "Simple/CircleMask"
             {
                 float3 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                half4 color : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                half4 color : COLOR;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -62,6 +64,7 @@ Shader "Simple/CircleMask"
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);
                 o.uv = v.uv;
+                o.color = v.color;
                 return o;
             }
 
@@ -82,6 +85,7 @@ Shader "Simple/CircleMask"
                 color = pass_small * color + (1 - pass_small) * _BoundColor;
 
                 color.a = pass_big * _Color.a;
+                color *= i.color;
                 return color;
             }
             ENDHLSL

@@ -32,12 +32,14 @@ Shader "Simple/PureColorWithAlpha"
             {
                 float3 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -51,6 +53,7 @@ Shader "Simple/PureColorWithAlpha"
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);
                 o.uv = v.uv;
+                o.color = v.color;
                 return o;
             }
 
@@ -59,7 +62,7 @@ Shader "Simple/PureColorWithAlpha"
                 float4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 float4 color = _Color;
                 color.a = mainTex.a;
-                return color;
+                return color * i.color;
             }
             ENDHLSL
         }

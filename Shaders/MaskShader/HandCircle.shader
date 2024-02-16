@@ -74,7 +74,7 @@ Shader "Simple/CircleMask"
             {
                 float _Delta = 0.001f * _AARate;
                 float4 mainTexColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex,
-                                                       (i.uv + _TextureOffset.xy) * _TextureOffset.zw);
+                                                       (i.uv + _TextureOffset.xy) * (_TextureOffset.zw + 1));
 
                 i.uv -= 0.5f;
                 float2 uv_n = float2(i.uv.x, i.uv.y * _Ratio);

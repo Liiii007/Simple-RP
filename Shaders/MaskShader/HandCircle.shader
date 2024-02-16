@@ -9,6 +9,7 @@ Shader "Simple/CircleMask"
         _Ratio ("Ratio", float) = 1
         _Width ("Width", float) = 0.1
         _AARate ("AA Rate", float) = 1
+        _TextureOffset ("Texture Modify", Vector) = (0,0,0,0)
     }
 
 
@@ -53,6 +54,7 @@ Shader "Simple/CircleMask"
                 SAMPLER(sampler_MainTex);
                 float4 _Color;
                 float4 _BoundColor;
+                float4 _TextureOffset;
                 float _Radius;
                 float _Ratio;
                 float _Width;
@@ -71,7 +73,8 @@ Shader "Simple/CircleMask"
             half4 UnlitFragment(Varyings i) : SV_Target
             {
                 float _Delta = 0.001f * _AARate;
-                float4 mainTexColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+                float4 mainTexColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex,
+                                                       (i.uv + _TextureOffset.xy) * _TextureOffset.zw);
 
                 i.uv -= 0.5f;
                 float2 uv_n = float2(i.uv.x, i.uv.y * _Ratio);

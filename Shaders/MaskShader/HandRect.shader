@@ -35,12 +35,14 @@ Shader "Simple/RectMask"
             {
                 float3 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                half4 color : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
+                half4 color : COLOR;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -57,6 +59,7 @@ Shader "Simple/RectMask"
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);
                 o.uv = v.uv;
+                o.color = v.color;
                 return o;
             }
 
@@ -91,6 +94,7 @@ Shader "Simple/RectMask"
 
                 float4 color = mainTex + boundColor;
                 color.a = pass_big;
+                color *= i.color;
                 return color;
             }
             ENDHLSL

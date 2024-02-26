@@ -12,6 +12,5 @@ A minimal render pipeline with SRP, not lighting, with post-processing/particle/
 - [x] Build a new Render Pipeline (Part1)
 - [x] Write simple HLSL shader && Support SRP batcher (Part2)
 - [x] Support Post-Processing stack && Bloom
-- [ ] Support HDR
-- [ ] Support Color Grading
-- [ ] Support Render Scale
+- [x] Support HDR
+- [x] Support Render Scale

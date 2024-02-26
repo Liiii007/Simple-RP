@@ -8,18 +8,18 @@ namespace SimpleRP.Runtime
     {
         private const string BufferName = "Render Camera";
 
-        private static readonly ShaderTagId FirstPassShaderTagId = new ShaderTagId("SRPDefaultUnlit");
+        private static readonly ShaderTagId FirstPassShaderTagId  = new ShaderTagId("SRPDefaultUnlit");
         private static readonly ShaderTagId SecondPassShaderTagId = new ShaderTagId("SRPPass2");
 
-        private Camera _camera;
-        private ScriptableRenderContext _context;
-        private readonly CommandBuffer _buffer = new CommandBuffer { name = BufferName };
-        private CullingResults _cullingResults;
+        private          Camera                  _camera;
+        private          ScriptableRenderContext _context;
+        private readonly CommandBuffer           _buffer = new CommandBuffer { name = BufferName };
+        private          CullingResults          _cullingResults;
 
-        private PostProcessing.PostFXStack _postFXStack = new PostProcessing.PostFXStack();
+        private        PostProcessing.PostFXStack _postFXStack = new PostProcessing.PostFXStack();
         private static int _frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
-        private bool _useHDR;
-        private bool _useRenderScale;
+        private        bool _useHDR;
+        private        bool _useRenderScale;
         private static bool AllowHDR => SimpleRenderPipelineParameter.AllowHDR;
         private static float RenderScale => Mathf.Clamp(SimpleRenderPipelineParameter.RenderScale, 0.1f, 2f);
 
@@ -29,8 +29,8 @@ namespace SimpleRP.Runtime
         public void Render(ScriptableRenderContext context, Camera camera)
         {
             _context = context;
-            _camera = camera;
-            _useHDR = camera.allowHDR && AllowHDR;
+            _camera  = camera;
+            _useHDR  = camera.allowHDR && AllowHDR;
 
             _useRenderScale = RenderScale < 0.99f || RenderScale > 1.01f;
 
@@ -79,16 +79,16 @@ namespace SimpleRP.Runtime
                     _frameBufferId,
                     ScreenRTSize.x,
                     ScreenRTSize.y,
-                    32,
+                    0,
                     FilterMode.Bilinear,
                     _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
 
                 _buffer.SetRenderTarget(_frameBufferId,
-                    RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+                                        RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
             }
 
             _buffer.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,
-                flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
+                                      flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
             // _buffer.BeginSample(SampleName);
             ExecuteBuffer();
         }
@@ -106,8 +106,8 @@ namespace SimpleRP.Runtime
             _context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
             _context.DrawSkybox(_camera);
 
-            sortingSettings.criteria = SortingCriteria.CommonTransparent;
-            drawingSettings.sortingSettings = sortingSettings;
+            sortingSettings.criteria           = SortingCriteria.CommonTransparent;
+            drawingSettings.sortingSettings    = sortingSettings;
             filteringSettings.renderQueueRange = RenderQueueRange.transparent;
 
             _context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);

@@ -11,11 +11,11 @@ namespace SimpleRP.Runtime.PostProcessing
     {
         public const string BufferName = "Post FX";
 
-        private CommandBuffer _buffer = new CommandBuffer() { name = BufferName };
+        private CommandBuffer           _buffer = new CommandBuffer() { name = BufferName };
         private ScriptableRenderContext _context;
-        private Camera _camera;
-        private PostFXSettings _settings;
-        private bool _useHDR;
+        private Camera                  _camera;
+        private PostFXSettings          _settings;
+        private bool                    _useHDR;
 
         private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
 
@@ -26,23 +26,23 @@ namespace SimpleRP.Runtime.PostProcessing
 
         public PostFXStack()
         {
-            _bloomMipUp = new int[_maxBloomPyramidLevels];
+            _bloomMipUp   = new int[_maxBloomPyramidLevels];
             _bloomMipDown = new int[_maxBloomPyramidLevels];
 
             //Get sequential texture id 
             for (int i = 0; i < _maxBloomPyramidLevels; i++)
             {
-                _bloomMipUp[i] = Shader.PropertyToID("_BloomPyramidUp" + i);
+                _bloomMipUp[i]   = Shader.PropertyToID("_BloomPyramidUp"   + i);
                 _bloomMipDown[i] = Shader.PropertyToID("_BloomPyramidDown" + i);
             }
         }
 
         public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR,
-            Vector2Int screenRTSize)
+                          Vector2Int              screenRTSize)
         {
-            _context = context;
-            _camera = camera;
-            _useHDR = useHDR;
+            _context      = context;
+            _camera       = camera;
+            _useHDR       = useHDR;
             _screenRTSize = screenRTSize;
 
             //Only GameView(1) and SceneView(2) camera will apply post fx
@@ -64,7 +64,7 @@ namespace SimpleRP.Runtime.PostProcessing
         {
             // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
 
-            if (DoBloom(sourceId))
+            if (SimpleRenderPipelineParameter.EnablePostFX && DoBloom(sourceId))
             {
                 _buffer.SetGlobalTexture(_fxSourceId2, _bloomResultRT);
                 DoToneMapping(sourceId);
@@ -92,9 +92,9 @@ namespace SimpleRP.Runtime.PostProcessing
             _buffer.Clear();
         }
 
-        private static List<(RenderTargetIdentifier, RenderTargetIdentifier, int)> blurRTQueue = new();
-        private static List<(Texture, RenderTargetIdentifier, int)> blurTextureQueue = new();
-        public static Dictionary<string, RenderTexture> _blurTextures = new();
+        private static List<(RenderTargetIdentifier, RenderTargetIdentifier, int)> blurRTQueue      = new();
+        private static List<(Texture, RenderTargetIdentifier, int)>                blurTextureQueue = new();
+        public static  Dictionary<string, RenderTexture>                           _blurTextures    = new();
 
         public static void GetBlurTexture(Texture to, Texture from = null, int iteration = 5)
         {
@@ -143,26 +143,26 @@ namespace SimpleRP.Runtime.PostProcessing
         #region DoBloom
 
         private const int _maxBloomPyramidLevels = 16;
-        private int _bloomPyramidId;
-        private int _bloomPrefilterRT = Shader.PropertyToID("_BloomPrefilter");
-        private int _bloomPrefilterId = Shader.PropertyToID("_BloomPrefilter");
-        private int _bloomParamsId = Shader.PropertyToID("_Params");
-        private int _bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
-        private int _bloomResultRT = Shader.PropertyToID("_BloomResult");
+        private       int _bloomPyramidId;
+        private       int _bloomPrefilterRT = Shader.PropertyToID("_BloomPrefilter");
+        private       int _bloomPrefilterId = Shader.PropertyToID("_BloomPrefilter");
+        private       int _bloomParamsId    = Shader.PropertyToID("_Params");
+        private       int _bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
+        private       int _bloomResultRT    = Shader.PropertyToID("_BloomResult");
 
         private bool DoBloom(int sourceId)
         {
             var bloomSettings = _settings.Bloom;
 
             //Prefilter
-            int width = _camera.pixelWidth >> 1;
+            int width  = _camera.pixelWidth  >> 1;
             int height = _camera.pixelHeight >> 1;
             var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
 
             //Bypass bloom if no need
-            if (bloomSettings.maxIterations == 0 || bloomSettings.intensity <= 0 ||
-                height < bloomSettings.downscaleLimit * 2 ||
-                width < bloomSettings.downscaleLimit * 2)
+            if (bloomSettings.maxIterations == 0                               || bloomSettings.intensity <= 0 ||
+                height                      < bloomSettings.downscaleLimit * 2 ||
+                width                       < bloomSettings.downscaleLimit * 2)
             {
                 return false;
             }
@@ -172,22 +172,22 @@ namespace SimpleRP.Runtime.PostProcessing
 
             int mipCount = bloomSettings.maxIterations;
 
-            float clamp = 65472f;
-            float threshold = Mathf.GammaToLinearSpace(bloomSettings.threshold);
+            float clamp         = 65472f;
+            float threshold     = Mathf.GammaToLinearSpace(bloomSettings.threshold);
             float thresholdKnee = threshold * 0.5f;
-            float scatter = Mathf.Lerp(0.05f, 0.95f, 0.7f);
+            float scatter       = Mathf.Lerp(0.05f, 0.95f, 0.7f);
             _buffer.SetGlobalVector(_bloomParamsId, new Vector4(scatter, clamp, threshold, thresholdKnee));
             _buffer.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
 
             //Prefilter
             for (int i = 0; i < bloomSettings.maxIterations; i++)
             {
-                int cw = width >> i;
+                int cw = width  >> i;
                 int ch = height >> i;
                 _buffer.GetTemporaryRT(_bloomMipUp[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
-                    format);
+                                       format);
                 _buffer.GetTemporaryRT(_bloomMipDown[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
-                    format);
+                                       format);
             }
 
             Draw(sourceId, _bloomMipDown[0], PostFXSettings.FXPass.BloomPrefilterPassFragment);
@@ -205,9 +205,9 @@ namespace SimpleRP.Runtime.PostProcessing
             //Upsample
             for (int i = bloomSettings.maxIterations - 2; i >= 0; i--)
             {
-                var lowMip = (i == mipCount - 2) ? _bloomMipDown[i + 1] : _bloomMipUp[i + 1];
+                var lowMip  = (i == mipCount - 2) ? _bloomMipDown[i + 1] : _bloomMipUp[i + 1];
                 var highMip = _bloomMipDown[i];
-                var dst = _bloomMipUp[i];
+                var dst     = _bloomMipUp[i];
 
                 _buffer.SetGlobalTexture(_fxSourceId2, lowMip);
                 Draw(highMip, dst, PostFXSettings.FXPass.BloomCombine);
@@ -244,7 +244,7 @@ namespace SimpleRP.Runtime.PostProcessing
                 }
             }
 
-            int width = _camera.pixelWidth >> 1;
+            int width  = _camera.pixelWidth  >> 1;
             int height = _camera.pixelHeight >> 1;
             var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
 
@@ -253,7 +253,7 @@ namespace SimpleRP.Runtime.PostProcessing
 
             for (int i = 1; i < iterations; i++)
             {
-                int cw = width >> i;
+                int cw = width  >> i;
                 int ch = height >> i;
 
                 _buffer.GetTemporaryRT

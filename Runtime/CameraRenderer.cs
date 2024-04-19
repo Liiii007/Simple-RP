@@ -1,4 +1,5 @@
-﻿using SimpleRP.Runtime.PostProcessing;
+﻿using FrameGraph;
+using SimpleRP.Runtime.PostProcessing;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,7 +18,7 @@ namespace SimpleRP.Runtime
         private          CullingResults          _cullingResults;
 
         private        PostProcessing.PostFXStack _postFXStack = new PostProcessing.PostFXStack();
-        private static int _frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
+        private static int _frameBufferId = Shader.PropertyToID("_FrameBuffer");
         private        bool _useHDR;
         private        bool _useRenderScale;
         private static bool AllowHDR => SimpleRenderPipelineParameter.AllowHDR;
@@ -75,20 +76,23 @@ namespace SimpleRP.Runtime
                 }
 
                 //Set render target here
-                _buffer.GetTemporaryRT(
-                    _frameBufferId,
-                    ScreenRTSize.x,
-                    ScreenRTSize.y,
-                    0,
-                    FilterMode.Bilinear,
-                    _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);
+                var desc = new RenderTextureDescriptor(ScreenRTSize.x, ScreenRTSize.y,
+                                                       _useHDR
+                                                           ? RenderTextureFormat.DefaultHDR
+                                                           : RenderTextureFormat.Default, 0);
+                _buffer.GetTemporaryRT(_frameBufferId, desc);
 
                 _buffer.SetRenderTarget(_frameBufferId,
                                         RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+
+                Blackboard<RenderTextureDescriptor>.Set("CameraOpaqueTextureDescriptor", desc);
+                Blackboard<VirtualRenderTarget>.Set("_CameraOpaqueTexture",
+                                                    new VirtualRenderTarget(_frameBufferId, desc));
             }
 
             _buffer.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,
                                       flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
+
             // _buffer.BeginSample(SampleName);
             ExecuteBuffer();
         }

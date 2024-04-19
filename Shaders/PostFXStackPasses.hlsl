@@ -166,4 +166,12 @@ half4 ToneMappingACESPassFragment(Attributes input) : SV_TARGET
     return color;
 }
 
+half4 BW(Attributes input) : SV_TARGET
+{
+    half4 color = GetSource(input.uv);
+    color.rgb = dot(color.rgb, half3(0.2126, 0.7152, 0.0722));
+    color.a = 1;
+    return color;
+}
+
 #endif

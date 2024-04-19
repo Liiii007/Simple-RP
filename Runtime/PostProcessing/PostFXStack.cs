@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using FrameGraph;
+using FrameGraph.Serliazion;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -23,6 +25,8 @@ namespace SimpleRP.Runtime.PostProcessing
         private int[] _bloomMipDown;
 
         private Vector2Int _screenRTSize;
+
+        private PassGraph _graph;
 
         public PostFXStack()
         {
@@ -87,6 +91,17 @@ namespace SimpleRP.Runtime.PostProcessing
 
             blurRTQueue.Clear();
             blurTextureQueue.Clear();
+
+            if (_graph == null)
+            {
+                _graph = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
+            }
+
+            _graph.Execute(new RenderData()
+            {
+                context = _context,
+                cmd     = _buffer
+            });
 
             _context.ExecuteCommandBuffer(_buffer);
             _buffer.Clear();

@@ -1,16 +1,15 @@
 ﻿using FrameGraph.View;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace FrameGraph
 {
-    [GraphPort(Direction.Input, Port.Capacity.Single, "Execute", typeof(ExecRoot))]
-    [GraphPort(Direction.Input, Port.Capacity.Single, "Source", typeof(Texture))]
-    [GraphPort(Direction.Input, Port.Capacity.Single, "Target", typeof(Texture))]
-    [GraphPort(Direction.Input, Port.Capacity.Single, "Material", typeof(Material))]
-    [GraphPort(Direction.Output, Port.Capacity.Multi, "Next", typeof(ExecRoot))]
-    [GraphPort(Direction.Output, Port.Capacity.Multi, "Result", typeof(Texture))]
+    [GraphPort(PortDirection.Input, PortCapacity.Single, "Execute", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Input, PortCapacity.Single, "Source", typeof(Texture))]
+    [GraphPort(PortDirection.Input, PortCapacity.Single, "Target", typeof(Texture))]
+    [GraphPort(PortDirection.Input, PortCapacity.Single, "Material", typeof(Material))]
+    [GraphPort(PortDirection.Output, PortCapacity.Multi, "Next", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Output, PortCapacity.Multi, "Result", typeof(Texture))]
     public class BlitPass : PassBase
     {
         private VirtualRenderTarget SourceRT => SourceRTSlot.InputValue;

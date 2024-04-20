@@ -1,12 +1,11 @@
 ﻿using FrameGraph.Serliazion;
 using FrameGraph.View;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace FrameGraph
 {
     [GraphField("Material", typeof(Material))]
-    [GraphPort(Direction.Output, Port.Capacity.Multi, "Value", typeof(Material))]
+    [GraphPort(PortDirection.Output, PortCapacity.Multi, "Value", typeof(Material))]
     public class MaterialResource : ResourceNodeBase<Material>, IAdditionInit
     {
         public void InitNode(FrameGraphData data, NodeData nodeData)
@@ -22,6 +21,7 @@ namespace FrameGraph
         }
     }
 
+    #if UNITY_EDITOR
     namespace View
     {
         public partial class MaterialResourceNode
@@ -37,4 +37,5 @@ namespace FrameGraph
             }
         }
     }
+    #endif
 }

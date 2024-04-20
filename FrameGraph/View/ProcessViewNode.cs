@@ -1,4 +1,5 @@
-﻿using FrameGraph.Node;
+﻿#if UNITY_EDITOR
+using FrameGraph.Node;
 using UnityEditor.Experimental.GraphView;
 
 namespace FrameGraph.View
@@ -23,3 +24,4 @@ namespace FrameGraph.View
         public abstract void Execute();
     }
 }
+#endif

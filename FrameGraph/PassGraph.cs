@@ -47,16 +47,16 @@ namespace FrameGraph
         }
 
         //TODO:Generate automation
-        public static Dictionary<Type, Type> NodeTypes = new()
+        public static Dictionary<string, Type> NodeTypes = new()
         {
-            { typeof(View.ExecRootNode), typeof(ExecRoot) },
-            { typeof(View.BlitPassNode), typeof(BlitPass) },
-            { typeof(View.MaterialResourceNode), typeof(MaterialResource) },
-            { typeof(View.CameraOpaqueTextureNode), typeof(CameraOpaqueTexture) },
-            { typeof(View.FrameBufferNode), typeof(FrameBuffer) },
-            { typeof(View.GetTemporaryRTNode), typeof(GetTemporaryRT) },
-            { typeof(View.FinalNode), typeof(Final) },
-            { typeof(View.IfStatementNode), typeof(IfStatement) }
+            { nameof(View.ExecRootNode), typeof(ExecRoot) },
+            { nameof(View.BlitPassNode), typeof(BlitPass) },
+            { nameof(View.MaterialResourceNode), typeof(MaterialResource) },
+            { nameof(View.CameraOpaqueTextureNode), typeof(CameraOpaqueTexture) },
+            { nameof(View.FrameBufferNode), typeof(FrameBuffer) },
+            { nameof(View.GetTemporaryRTNode), typeof(GetTemporaryRT) },
+            { nameof(View.FinalNode), typeof(Final) },
+            { nameof(View.IfStatementNode), typeof(IfStatement) }
         };
 
         public static PassGraph Parse(FrameGraphData data)
@@ -68,21 +68,12 @@ namespace FrameGraph
 
             foreach (var nodeData in data.Nodes)
             {
-                var nodeType = Type.GetType(nodeData.Type);
-
-                if (nodeType == null)
-                {
-                    Debug.LogError($"Cannot find editor type:{nodeData.Type}");
-                    continue;
-                }
-
-                if (!NodeTypes.TryGetValue(nodeType, out nodeType))
+                Type nodeType = null;
+                if (!NodeTypes.TryGetValue(nodeData.Type, out nodeType) || nodeType == null)
                 {
                     Debug.LogError($"Cannot find runtime type:{nodeData.Type}");
                     continue;
                 }
-
-                if (nodeType == null) { }
 
                 var nodeInstance = Activator.CreateInstance(nodeType) as NodeBase;
 

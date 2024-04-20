@@ -1,13 +1,11 @@
-﻿using FrameGraph;
-using FrameGraph.View;
-using UnityEditor.Experimental.GraphView;
+﻿using FrameGraph.View;
 using UnityEngine.Rendering;
 
 namespace FrameGraph
 {
-    [GraphPort(Direction.Input, Port.Capacity.Single, "Execute", typeof(ExecRoot))]
-    [GraphPort(Direction.Output, Port.Capacity.Single, "True", typeof(ExecRoot))]
-    [GraphPort(Direction.Output, Port.Capacity.Single, "False", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Input, PortCapacity.Single, "Execute", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Output, PortCapacity.Single, "True", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Output, PortCapacity.Single, "False", typeof(ExecRoot))]
     public class IfStatement : PassBase
     {
         public Slot<PassBase> InputExecute;

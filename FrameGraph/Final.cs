@@ -1,10 +1,9 @@
 ﻿using FrameGraph.View;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine.Rendering;
 
 namespace FrameGraph
 {
-    [GraphPort(Direction.Input, Port.Capacity.Multi, "Final", typeof(ExecRoot))]
+    [GraphPort(PortDirection.Input, PortCapacity.Multi, "Final", typeof(ExecRoot))]
     public class Final : PassBase
     {
         public Slot<PassBase> PassSlot;

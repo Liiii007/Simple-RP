@@ -92,9 +92,10 @@ namespace SimpleRP.Runtime.PostProcessing
             blurRTQueue.Clear();
             blurTextureQueue.Clear();
 
-            if (_graph == null)
+            if (_graph == null || PassGraph.RequireUpdate)
             {
                 _graph = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
+                PassGraph.RequireUpdate = false;
             }
 
             _graph.Execute(new RenderData()

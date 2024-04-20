@@ -94,6 +94,7 @@ namespace FrameGraph.View
             //Save
             var so = Save(this);
             SaveOrUpdate(so);
+            PassGraph.RequireUpdate = true;
         }
 
         public static FrameGraphData Save(FrameGraphView graph)

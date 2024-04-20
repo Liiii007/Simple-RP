@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using FrameGraph.Node;
 using FrameGraph.Serliazion;
 using SimpleRP.Runtime;
-using UnityEditor;
 using UnityEngine;
 
 namespace FrameGraph
 {
     public class PassGraph
     {
-        public ExecRoot ExecRoot;
+        public        ExecRoot ExecRoot;
+        public static bool     RequireUpdate { get; set; }
 
         public void Execute(RenderData data)
         {
@@ -31,6 +31,12 @@ namespace FrameGraph
             {
                 var current = queue.Dequeue();
 
+                if (current is IfStatement ifStatementNode)
+                {
+                    yield return ifStatementNode.GetNextPass();
+                    continue;
+                }
+
                 foreach (var next in current.Next)
                 {
                     queue.Enqueue(next);
@@ -47,8 +53,10 @@ namespace FrameGraph
             { typeof(View.BlitPassNode), typeof(BlitPass) },
             { typeof(View.MaterialResourceNode), typeof(MaterialResource) },
             { typeof(View.CameraOpaqueTextureNode), typeof(CameraOpaqueTexture) },
+            { typeof(View.FrameBufferNode), typeof(FrameBuffer) },
             { typeof(View.GetTemporaryRTNode), typeof(GetTemporaryRT) },
-            { typeof(View.FinalNode), typeof(Final) }
+            { typeof(View.FinalNode), typeof(Final) },
+            { typeof(View.IfStatementNode), typeof(IfStatement) }
         };
 
         public static PassGraph Parse(FrameGraphData data)
@@ -106,8 +114,22 @@ namespace FrameGraph
                     continue;
                 }
 
+                if (leftNode is IfStatement ifStatementNode)
+                {
+                    if (edge.LeftSlotName == "True")
+                    {
+                        ifStatementNode.TruePass = rightNode as PassBase;
+                    }
+                    else
+                    {
+                        ifStatementNode.FalsePass = rightNode as PassBase;
+                    }
+
+                    continue;
+                }
+
                 if (rightNode is PassBase passNext && leftNode is PassBase passPrev &&
-                    edge.RightSlotName.Contains("Execute"))
+                    (edge.RightSlotName.Contains("Execute")))
                 {
                     passPrev.Next.Add(passNext);
                     continue;

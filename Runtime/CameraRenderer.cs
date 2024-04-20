@@ -87,6 +87,9 @@ namespace SimpleRP.Runtime
 
                 Blackboard<RenderTextureDescriptor>.Set("CameraOpaqueTextureDescriptor", desc);
                 Blackboard<VirtualRenderTarget>.Set("_CameraOpaqueTexture",
+                                                    new VirtualRenderTarget(
+                                                        BuiltinRenderTextureType.CameraTarget, default));
+                Blackboard<VirtualRenderTarget>.Set("_FrameBuffer",
                                                     new VirtualRenderTarget(_frameBufferId, desc));
             }
 

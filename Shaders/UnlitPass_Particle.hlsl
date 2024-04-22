@@ -4,7 +4,6 @@
 #include "../ShaderLibrary/Common.hlsl"
 
 CBUFFER_START(UnityPerMaterial)
-    float4 _BaseColor;
     float _Intensity;
     TEXTURE2D(_MainTex);
     SAMPLER(sampler_MainTex);
@@ -14,12 +13,14 @@ struct Attributes
 {
     float3 positionOS : POSITION;
     float2 baseUV : TEXCOORD0;
+    float4 color : COLOR;
 };
 
 struct Varyings
 {
     float4 positionCS : SV_POSITION;
     float2 baseUV : TEXCOORD0;
+    float4 color : COLOR;
 };
 
 Varyings UnlitPassVertex(Attributes input)
@@ -28,6 +29,7 @@ Varyings UnlitPassVertex(Attributes input)
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     output.positionCS = TransformWorldToHClip(positionWS);
     output.baseUV = input.baseUV;
+    output.color = input.color;
 
     return output;
 }
@@ -36,8 +38,8 @@ float4 UnlitPassFragment(Varyings input) : SV_TARGET
 {
     half4 tex = SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_MainTex, input.baseUV, 0);
     clip(tex.a);
-    float4 color = _BaseColor * _Intensity;
-    color.a = _BaseColor.a;
+    float4 color = input.color * _Intensity;
+    color.a = input.color.a;
     return color * tex;
 }
 

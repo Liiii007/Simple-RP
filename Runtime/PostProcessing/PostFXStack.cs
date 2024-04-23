@@ -91,18 +91,18 @@ namespace SimpleRP.Runtime.PostProcessing
 
             blurRTQueue.Clear();
             blurTextureQueue.Clear();
-            
-            #if UNITY_EDITOR
+
+            #if UNITY_EDITOR && !SIMPLE_EDITOR
             if (_graph == null || PassGraph.RequireUpdate)
             {
-                _graph                  = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
+                _graph = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
                 PassGraph.RequireUpdate = false;
             }
 
             _graph.Execute(new RenderData()
             {
                 context = _context,
-                cmd     = _buffer
+                cmd = _buffer
             });
             #endif
 

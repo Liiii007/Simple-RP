@@ -27,5 +27,5 @@ Material:
     m_Floats:
     - _Intensity: 1
     m_Colors:
-    - _BaseColor: {r: 0.9261162, g: 0.9251607, b: 0.9251278, a: 1}
+    - _BaseColor: {r: 0.17010024, g: 0.13504572, b: 0.2621285, a: 1}
   m_BuildTextureStacks: []

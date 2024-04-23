@@ -99,14 +99,14 @@ namespace SimpleRP.Runtime.PostProcessing
             #if UNITY_EDITOR && !SIMPLE_EDITOR
             if (_graph == null || PassGraph.RequireUpdate)
             {
-                _graph = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
+                _graph                  = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
                 PassGraph.RequireUpdate = false;
             }
 
             _graph.Execute(new RenderData()
             {
                 context = _context,
-                cmd = _buffer
+                cmd     = _buffer
             });
             #endif
 
@@ -332,7 +332,7 @@ namespace SimpleRP.Runtime.PostProcessing
                 Profiler.EndSample();
             }
 
-            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.ToneMappingACES);
+            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.Copy);
 
             for (int i = 0; i < iterations * 2; i++)
             {

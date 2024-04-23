@@ -68,6 +68,10 @@ namespace SimpleRP.Runtime.PostProcessing
         {
             // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
 
+            _buffer.SetGlobalFloat("_Brightness", SimpleRenderPipelineParameter.Brightness * 0.01f + 1f);
+            _buffer.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
+            _buffer.SetGlobalFloat("_Contrast", SimpleRenderPipelineParameter.Contrast     * 0.01f + 1f);
+
             if (SimpleRenderPipelineParameter.EnablePostFX && DoBloom(sourceId))
             {
                 _buffer.SetGlobalTexture(_fxSourceId2, _bloomResultRT);
@@ -328,7 +332,7 @@ namespace SimpleRP.Runtime.PostProcessing
                 Profiler.EndSample();
             }
 
-            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.Copy);
+            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.ToneMappingACES);
 
             for (int i = 0; i < iterations * 2; i++)
             {

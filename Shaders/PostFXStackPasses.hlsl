@@ -14,6 +14,9 @@ float4 _Params; // x: scatter, y: clamp, z: threshold (linear), w: threshold kne
 #define Threshold           _Params.z
 #define ThresholdKnee       _Params.w
 float _BloomIntensity;
+float _Brightness;
+float _Saturation;
+float _Contrast;
 
 TEXTURE2D(_PostFXSource);
 TEXTURE2D(_PostFXSource2);
@@ -162,6 +165,19 @@ half4 ToneMappingACESPassFragment(Attributes input) : SV_TARGET
     color.rgb = clamp(color.rgb, 0, 60);
     color.rgb = ACESFitted(color.rgb);
     color.a = 1;
+    //brigtness亮度直接乘以一个系数，也就是RGB整体缩放，调整亮度
+    float3 finalColor = color * _Brightness;
+    //saturation饱和度：首先根据公式计算同等亮度情况下饱和度最低的值：
+    float gray = 0.2125 * color.r + 0.7154 * color.g + 0.0721 * color.b;
+    float3 grayColor = float3(gray, gray, gray);
+    //根据Saturation在饱和度最低的图像和原图之间差值
+    finalColor = lerp(grayColor, finalColor, _Saturation);
+    //contrast对比度：首先计算对比度最低的值
+    float3 avgColor = float3(0.5, 0.5, 0.5);
+    //根据Contrast在对比度最低的图像和原图之间差值
+    finalColor = lerp(avgColor, finalColor, _Contrast);
+
+    color.rgb = finalColor;
 
     return color;
 }

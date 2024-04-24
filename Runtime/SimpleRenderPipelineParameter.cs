@@ -12,5 +12,6 @@ namespace SimpleRP.Runtime
         public static float Brightness = 0;
         public static float Saturation = 0;
         public static float Contrast   = 0;
+        public static float Hue        = 0;
     }
 }

@@ -5,7 +5,6 @@ using FrameGraph.Serliazion;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
-using Random = UnityEngine.Random;
 
 namespace SimpleRP.Runtime.PostProcessing
 {
@@ -19,7 +18,8 @@ namespace SimpleRP.Runtime.PostProcessing
         private PostFXSettings          _settings;
         private bool                    _useHDR;
 
-        private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
+        private int _fxSourceId2          = Shader.PropertyToID("_PostFXSource2");
+        private int _colorGradingResultId = Shader.PropertyToID("_ColorGradingResult");
 
         private int[] _bloomMipUp;
         private int[] _bloomMipDown;
@@ -72,6 +72,9 @@ namespace SimpleRP.Runtime.PostProcessing
             _buffer.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
             _buffer.SetGlobalFloat("_Contrast", SimpleRenderPipelineParameter.Contrast     * 0.01f + 1f);
 
+            _buffer.GetTemporaryRT(_colorGradingResultId, _screenRTSize.x, _screenRTSize.y, 0, FilterMode.Bilinear,
+                                   RenderTextureFormat.Default);
+
             if (SimpleRenderPipelineParameter.EnablePostFX && DoBloom(sourceId))
             {
                 _buffer.SetGlobalTexture(_fxSourceId2, _bloomResultRT);
@@ -82,6 +85,9 @@ namespace SimpleRP.Runtime.PostProcessing
             {
                 DoToneMapping(sourceId);
             }
+
+            DoFXAA();
+            _buffer.ReleaseTemporaryRT(_colorGradingResultId);
 
             foreach (var (from, to, iteration) in blurRTQueue)
             {
@@ -182,7 +188,8 @@ namespace SimpleRP.Runtime.PostProcessing
             var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
 
             //Bypass bloom if no need
-            if (bloomSettings.maxIterations == 0                               || bloomSettings.intensity <= 0 ||
+            if (bloomSettings.maxIterations == 0                               ||
+                bloomSettings.intensity     <= 0                               ||
                 height                      < bloomSettings.downscaleLimit * 2 ||
                 width                       < bloomSettings.downscaleLimit * 2)
             {
@@ -346,6 +353,11 @@ namespace SimpleRP.Runtime.PostProcessing
 
         #region DoToneMapping
 
+        /// <summary>
+        /// Draw to _colorGradingResultId
+        /// </summary>
+        /// <param name="sourceId"></param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         private void DoToneMapping(int sourceId)
         {
             PostFXSettings.FXPass pass;
@@ -361,9 +373,16 @@ namespace SimpleRP.Runtime.PostProcessing
                     throw new ArgumentOutOfRangeException();
             }
 
-            Draw(sourceId, BuiltinRenderTextureType.CameraTarget, pass);
+            Draw(sourceId, _colorGradingResultId, pass);
         }
 
         #endregion
+
+        private void DoFXAA()
+        {
+            Profiler.BeginSample("FXAA");
+            Draw(_colorGradingResultId, BuiltinRenderTextureType.CameraTarget, PostFXSettings.FXPass.FXAA);
+            Profiler.EndSample(); //FXAA
+        }
     }
 }

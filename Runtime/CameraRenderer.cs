@@ -22,7 +22,7 @@ namespace SimpleRP.Runtime
         private        bool _useHDR;
         private        bool _useRenderScale;
         private static bool AllowHDR => SimpleRenderPipelineParameter.AllowHDR;
-        private static float RenderScale => Mathf.Clamp(SimpleRenderPipelineParameter.RenderScale, 0.1f, 2f);
+        private static float RenderScale => Mathf.Clamp(SimpleRenderPipelineParameter.RenderScale * 0.8f, 0.1f, 2f);
 
         private Vector2Int ScreenRTSize =>
             new((int)(_camera.pixelWidth * RenderScale), (int)(_camera.pixelHeight * RenderScale));

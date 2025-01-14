@@ -66,7 +66,7 @@ namespace SimpleRP.Runtime
             _context.SetupCameraProperties(_camera);
             CameraClearFlags flags = _camera.clearFlags;
 
-            if (_postFXStack.IsActive)
+            if (_postFXStack.IsActive && SimpleRenderPipelineParameter.EnablePostFX)
             {
                 //To prevent random result
                 if (flags > CameraClearFlags.Color)

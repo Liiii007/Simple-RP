@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using FrameGraph;
 using FrameGraph.Serliazion;
+using Plugins.SimpleRP.RenderGraph;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
@@ -21,24 +23,15 @@ namespace SimpleRP.Runtime.PostProcessing
         private int _fxSourceId2 = Shader.PropertyToID("_PostFXSource2");
         private int _colorGradingResultId = Shader.PropertyToID("_ColorGradingResult");
 
-        private int[] _bloomMipUp;
-        private int[] _bloomMipDown;
+        private VirtualTexture[] _bloomMipUp;
+        private VirtualTexture[] _bloomMipDown;
 
         private Vector2Int _screenRTSize;
 
-        private PassGraph _graph;
-
         public PostFXStack()
         {
-            _bloomMipUp = new int[_maxBloomPyramidLevels];
-            _bloomMipDown = new int[_maxBloomPyramidLevels];
-
-            //Get sequential texture id 
-            for (int i = 0; i < _maxBloomPyramidLevels; i++)
-            {
-                _bloomMipUp[i] = Shader.PropertyToID("_BloomPyramidUp" + i);
-                _bloomMipDown[i] = Shader.PropertyToID("_BloomPyramidDown" + i);
-            }
+            _bloomMipUp = new VirtualTexture[_maxBloomPyramidLevels];
+            _bloomMipDown = new VirtualTexture[_maxBloomPyramidLevels];
         }
 
         public void Setup(ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR,
@@ -66,29 +59,35 @@ namespace SimpleRP.Runtime.PostProcessing
 
         private const string ENABLE_POSTFX_KEYWORD = "SIMPLE_ENABLE_POSTFX";
 
-        public void Render(int sourceId)
+        private VirtualTexture _currentTexture;
+        private GraphInstance _graph;
+
+        public void Render(GraphInstance graph, VirtualTexture sourceId)
         {
-            // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
+            _graph = graph;
 
-            _buffer.SetGlobalFloat("_Brightness", SimpleRenderPipelineParameter.Brightness * 0.01f + 1f);
-            _buffer.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
-            _buffer.SetGlobalFloat("_Contrast", SimpleRenderPipelineParameter.Contrast * 0.01f + 1f);
+            Shader.SetGlobalFloat("_Brightness", SimpleRenderPipelineParameter.Brightness * 0.01f + 1f);
+            Shader.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
+            Shader.SetGlobalFloat("_Contrast", SimpleRenderPipelineParameter.Contrast * 0.01f + 1f);
 
-            if (SimpleRenderPipelineParameter.EnablePostFX && DoBloom(sourceId))
+            _currentTexture = sourceId;
+
+
+            if (SimpleRenderPipelineParameter.EnablePostFX)
             {
-                _buffer.GetTemporaryRT(_colorGradingResultId, _screenRTSize.x, _screenRTSize.y, 0, FilterMode.Bilinear,
-                    RenderTextureFormat.Default);
-                _buffer.SetGlobalTexture(_fxSourceId2, _bloomResultRT);
-                DoToneMapping(sourceId, _colorGradingResultId);
-                _buffer.ReleaseTemporaryRT(_bloomResultRT);
-                DoFXAA();
-                _buffer.ReleaseTemporaryRT(_colorGradingResultId);
+                var doBloom = DoBloom(sourceId, out var bloomResult);
+                // TODO:兼容没有bloom的情况
+                if (doBloom)
+                {
+                    sourceId = DoToneMapping(sourceId, bloomResult);
+                }
+
+                DoFXAA(sourceId);
                 Shader.EnableKeyword(ENABLE_POSTFX_KEYWORD);
             }
             else
             {
                 Shader.DisableKeyword(ENABLE_POSTFX_KEYWORD);
-                // DoToneMapping(sourceId, BuiltinRenderTextureType.CameraTarget);
             }
 
             foreach (var (from, to, iteration) in blurRTQueue)
@@ -103,23 +102,6 @@ namespace SimpleRP.Runtime.PostProcessing
 
             blurRTQueue.Clear();
             blurTextureQueue.Clear();
-
-#if UNITY_EDITOR && !SIMPLE_EDITOR
-            if (_graph == null || PassGraph.RequireUpdate)
-            {
-                _graph = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
-                PassGraph.RequireUpdate = false;
-            }
-
-            _graph.Execute(new RenderData()
-            {
-                context = _context,
-                cmd = _buffer
-            });
-#endif
-
-            _context.ExecuteCommandBuffer(_buffer);
-            _buffer.Clear();
         }
 
         private static List<(RenderTargetIdentifier, RenderTargetIdentifier, int)> blurRTQueue = new();
@@ -180,9 +162,10 @@ namespace SimpleRP.Runtime.PostProcessing
         private int _bloomIntensityId = Shader.PropertyToID("_BloomIntensity");
         private int _bloomResultRT = Shader.PropertyToID("_BloomResult");
 
-        private bool DoBloom(int sourceId)
+        private bool DoBloom(VirtualTexture source, out VirtualTexture bloomResult)
         {
             var bloomSettings = _settings.Bloom;
+            bloomResult = source;
 
             //Prefilter
             int width = _camera.pixelWidth >> 1;
@@ -207,30 +190,64 @@ namespace SimpleRP.Runtime.PostProcessing
             float threshold = Mathf.GammaToLinearSpace(bloomSettings.threshold);
             float thresholdKnee = threshold * 0.5f;
             float scatter = Mathf.Lerp(0.05f, 0.95f, 0.7f);
-            _buffer.SetGlobalVector(_bloomParamsId, new Vector4(scatter, clamp, threshold, thresholdKnee));
-            _buffer.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
+            Shader.SetGlobalVector(_bloomParamsId, new Vector4(scatter, clamp, threshold, thresholdKnee));
+            Shader.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
 
             //Prefilter
             for (int i = 0; i < bloomSettings.maxIterations; i++)
             {
                 int cw = width >> i;
                 int ch = height >> i;
-                _buffer.GetTemporaryRT(_bloomMipUp[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
-                    format);
-                _buffer.GetTemporaryRT(_bloomMipDown[i], Mathf.Max(1, cw), Mathf.Max(1, ch), 0, FilterMode.Bilinear,
-                    format);
+                _bloomMipUp[i] = new(new RenderTextureDescriptor(Mathf.Max(1, cw), Mathf.Max(1, ch), format)
+                {
+                    depthBufferBits = 0,
+                    depthStencilFormat = GraphicsFormat.None,
+                    useMipMap = false,
+                }, $"BloomMipUp{i}");
+                _bloomMipDown[i] = new(new RenderTextureDescriptor(Mathf.Max(1, cw), Mathf.Max(1, ch), format)
+                {
+                    depthBufferBits = 0,
+                    depthStencilFormat = GraphicsFormat.None,
+                    useMipMap = false
+                },$"BloomMipDown{i}");
             }
 
-            Draw(sourceId, _bloomMipDown[0], PostFXSettings.FXPass.BloomPrefilterPassFragment);
+            // Prefilter
+            _graph.AddPass((builder, context) =>
+                {
+                    builder.ReadTexture(source);
+                    builder.WriteTexture(_bloomMipDown[0]);
+                },
+                context =>
+                {
+                    context.cmd.Blit(source.id, _bloomMipDown[0].id, _settings.Material,
+                        (int)PostFXSettings.FXPass.BloomPrefilterPassFragment);
+                }, name: "Bloom Prefilter");
 
             //Downsample
             var lastDown = _bloomMipDown[0];
             for (int i = 1; i < bloomSettings.maxIterations; i++)
             {
-                Draw(lastDown, _bloomMipUp[i], PostFXSettings.FXPass.BloomHorizontal);
-                Draw(_bloomMipUp[i], _bloomMipDown[i], PostFXSettings.FXPass.BloomVertical);
+                var last = lastDown;
+                var index = i;
 
-                lastDown = _bloomMipDown[i];
+                _graph.AddPass((builder, context) =>
+                    {
+                        builder.ReadTexture(last);
+                        builder.WriteTexture(_bloomMipUp[index]);
+                        builder.ReadTexture(_bloomMipUp[index]);
+                        builder.WriteTexture(_bloomMipDown[index]);
+                    },
+                    context =>
+                    {
+                        context.cmd.Blit(last.id, _bloomMipUp[index].id, _settings.Material,
+                            (int)PostFXSettings.FXPass.BloomHorizontal);
+
+                        context.cmd.Blit(_bloomMipUp[index].id, _bloomMipDown[index].id, _settings.Material,
+                            (int)PostFXSettings.FXPass.BloomVertical);
+                    }, name: $"Bloom DownSample {i}");
+                
+                lastDown = _bloomMipDown[index];
             }
 
             //Upsample
@@ -240,22 +257,21 @@ namespace SimpleRP.Runtime.PostProcessing
                 var highMip = _bloomMipDown[i];
                 var dst = _bloomMipUp[i];
 
-                _buffer.SetGlobalTexture(_fxSourceId2, lowMip);
-                Draw(highMip, dst, PostFXSettings.FXPass.BloomCombine);
-
-                _bloomResultRT = dst;
+                _graph.AddPass((builder, context) =>
+                    {
+                        builder.ReadTexture(lowMip);
+                        builder.ReadTexture(highMip);
+                        builder.WriteTexture(dst);
+                    },
+                    context =>
+                    {
+                        context.cmd.SetGlobalTexture(_fxSourceId2, lowMip.id);
+                        context.cmd.Blit(highMip.id, dst.id, _settings.Material,
+                            (int)PostFXSettings.FXPass.BloomCombine);
+                    }, name: $"Bloom UpSample {i}");
             }
 
-            for (int i = 0; i < bloomSettings.maxIterations; i++)
-            {
-                _buffer.ReleaseTemporaryRT(_bloomMipDown[i]);
-
-                if (_bloomMipUp[i] != _bloomResultRT)
-                {
-                    _buffer.ReleaseTemporaryRT(_bloomMipUp[i]);
-                }
-            }
-
+            bloomResult = _bloomMipUp[0];
             return true;
         }
 
@@ -360,8 +376,18 @@ namespace SimpleRP.Runtime.PostProcessing
         /// </summary>
         /// <param name="sourceId"></param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        private void DoToneMapping(int sourceId, RenderTargetIdentifier targetId)
+        private VirtualTexture DoToneMapping(VirtualTexture sourceId, VirtualTexture bloomResult)
         {
+            var colorGradingResultDesc =
+                new RenderTextureDescriptor(_screenRTSize.x, _screenRTSize.y, RenderTextureFormat.Default)
+                {
+                    depthBufferBits = 0,
+                    depthStencilFormat = GraphicsFormat.None,
+                    useMipMap = false
+                };
+
+            var colorGradientTexture = new VirtualTexture(colorGradingResultDesc, "ColorGrading");
+
             PostFXSettings.FXPass pass;
             switch (_settings.toneMappingMode)
             {
@@ -375,16 +401,34 @@ namespace SimpleRP.Runtime.PostProcessing
                     throw new ArgumentOutOfRangeException();
             }
 
-            Draw(sourceId, targetId, pass);
+            _graph.AddPass((builder, context) =>
+            {
+                builder.ReadTexture(sourceId);
+                builder.ReadTexture(bloomResult);
+                builder.WriteTexture(colorGradientTexture);
+            }, context =>
+            {
+                context.cmd.SetGlobalTexture(_fxSourceId2, bloomResult.id);
+                context.cmd.Blit(sourceId.id, colorGradientTexture.id, _settings.Material, (int)pass);
+            }, name: "Tonemapping & Bloom Integration");
+
+            return colorGradientTexture;
         }
 
         #endregion
 
-        private void DoFXAA()
+        private void DoFXAA(VirtualTexture sourceId)
         {
-            Profiler.BeginSample("FXAA");
-            Draw(_colorGradingResultId, BuiltinRenderTextureType.CameraTarget, PostFXSettings.FXPass.FXAA);
-            Profiler.EndSample(); //FXAA
+            _graph.AddPass((builder, context) =>
+                {
+                    builder.ReadTexture(sourceId);
+                    builder.WriteTexture(context.CameraColorBuffer);
+                },
+                context =>
+                {
+                    context.cmd.Blit(sourceId.id, context.CameraColorBuffer.id, _settings.Material,
+                        (int)PostFXSettings.FXPass.FXAA);
+                }, name: "FXAA");
         }
     }
 }

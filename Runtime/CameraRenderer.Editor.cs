@@ -76,13 +76,6 @@ namespace SimpleRP.Runtime
 
         string SampleName { get; set; }
 
-        partial void PrepareBuffer()
-        {
-            Profiler.BeginSample("Editor Only");
-            _buffer.name = _camera.name;
-            Profiler.EndSample();
-        }
-
 #else
     const string SampleName = BufferName;
 #endif

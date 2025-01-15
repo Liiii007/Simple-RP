@@ -74,7 +74,6 @@ namespace Plugins.SimpleRP.RenderGraph
                 Index = Passes.Count,
                 Name = name
             });
-            
         }
 
         private Dictionary<VirtualTexture, int> _firstRead = new Dictionary<VirtualTexture, int>();
@@ -91,7 +90,6 @@ namespace Plugins.SimpleRP.RenderGraph
 
         public void Build()
         {
-            return;
             _firstRead.Clear();
             _firstWrite.Clear();
             _lastRead.Clear();
@@ -137,18 +135,9 @@ namespace Plugins.SimpleRP.RenderGraph
                     continue;
                 }
 
-                if (!_allocTextures.TryGetValue(passIndex, out var textures))
-                {
-                    textures = new List<VirtualTexture>();
-                    _allocTextures[passIndex] = textures;
-                }
-
-                textures.Add(rt);
-                _allocTextureSet.Add(rt);
-
                 if (!_firstWrite.TryGetValue(rt, out var firstWritePassIndex) || firstWritePassIndex > passIndex)
                 {
-                    Debug.LogError("Build Failed:RT在写入之前就已经读取");
+                    throw new Exception("Build Failed:RT在写入之前就已经读取");
                 }
             }
 
@@ -165,20 +154,21 @@ namespace Plugins.SimpleRP.RenderGraph
                     _releaseTextures[passIndex] = textures;
                 }
 
-                // 将释放时机放到最后一次写入rt之后
-                if (!_lastWrite.TryGetValue(rt, out var lastWritePassIndex) ||  lastWritePassIndex > passIndex)
-                {
-                    Debug.LogError($"RT Write after last read:{passIndex}, {lastWritePassIndex}");
-
-                    if (!_releaseTextures.TryGetValue(lastWritePassIndex, out textures))
-                    {
-                        textures = new List<VirtualTexture>();
-                        _releaseTextures[passIndex] = textures;
-                    }
-                }
-
                 textures.Add(rt);
                 _allocTextureSet.Remove(rt);
+            }
+
+            foreach (var (rt, passIndex) in _lastWrite)
+            {
+                if (rt.IsImported)
+                {
+                    continue;
+                }
+
+                if (!_lastRead.TryGetValue(rt, out var lastReadPassIndex) || lastReadPassIndex < passIndex)
+                {
+                    throw new Exception($"RT Write after last read:{passIndex}(write), {lastReadPassIndex}(read)");
+                }
             }
         }
 
@@ -201,7 +191,7 @@ namespace Plugins.SimpleRP.RenderGraph
 
         public void OnPrePass(int index)
         {
-            _renderContext.cmd = CommandBufferPool.Get(Passes[index].Name);  
+            _renderContext.cmd = CommandBufferPool.Get(Passes[index].Name);
             _renderContext.cmd.Clear();
             if (_allocTextures.TryGetValue(index, out var textures))
             {
@@ -236,19 +226,17 @@ namespace Plugins.SimpleRP.RenderGraph
                 OnPostPass(i);
             }
 
-            // foreach (var allocTexture in _allocTextureSet)
-            // {
-            //     allocTexture.ReleaseAndInvalid();
-            // }
-            //
-            // _allocTextureSet.Clear();
-            //
-            // _renderContext.Context.ExecuteCommandBuffer(_renderContext.cmd);
-            // _renderContext.cmd.Clear();
-            // CommandBufferPool.Release(_renderContext.cmd);
-            // _renderContext.cmd = null;
-            // _renderContext.Context.Submit();
-            
+            foreach (var allocTexture in _allocTextureSet)
+            {
+                allocTexture.ReleaseAndInvalid();
+            }
+
+            _allocTextureSet.Clear();
+
+            if (VirtualTexture.AllocatedHandles.Count > 0 || VirtualTexture.AllocatedTextures.Count > 0)
+            {
+                throw new Exception("存在贴图泄漏");
+            }
         }
     }
 }

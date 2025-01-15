@@ -90,25 +90,23 @@ namespace SimpleRP.Runtime
 
             var enablePostFX = _postFXStack.IsActive && SimpleRenderPipelineParameter.EnablePostFX;
 
-            _graph.AddPass((builder, context) =>
+            if (enablePostFX)
             {
-                if (enablePostFX)
-                {
-                    //Set render target here
-                    var desc = new RenderTextureDescriptor(ScreenRTSize.x, ScreenRTSize.y,
-                        _useHDR
-                            ? RenderTextureFormat.DefaultHDR
-                            : RenderTextureFormat.Default, 0);
-                    _opaqueTarget = new(desc, name:"OpaqueRT");
-                }
-                else
-                {
-                    _opaqueTarget = context.CameraColorBuffer;
-                }
+                //Set render target here
+                var desc = new RenderTextureDescriptor(ScreenRTSize.x, ScreenRTSize.y,
+                    _useHDR
+                        ? RenderTextureFormat.DefaultHDR
+                        : RenderTextureFormat.Default, 0);
+                _opaqueTarget = new(desc, name: "OpaqueRT");
+            }
+            else
+            {
+                _opaqueTarget = new(BuiltinRenderTextureType.CameraTarget);
+            }
 
-                Blackboard<VirtualTexture>.Set("_OpaqueTarget", _opaqueTarget);
-                builder.WriteTexture(_opaqueTarget);
-            }, context =>
+            Blackboard<VirtualTexture>.Set("_OpaqueTarget", _opaqueTarget);
+
+            _graph.AddPass((builder, context) => { builder.WriteTexture(_opaqueTarget); }, context =>
             {
                 if (enablePostFX)
                 {
@@ -118,15 +116,12 @@ namespace SimpleRP.Runtime
 
                 context.cmd.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,
                     flags == CameraClearFlags.Color ? _camera.backgroundColor.linear : Color.clear);
-            }, name:"Clear RT");
+            }, name: "Clear RT");
         }
 
         private void DrawVisibleGeometry()
         {
-            _graph.AddPass((builder, context) =>
-            {
-                builder.WriteTexture(_opaqueTarget);
-            }, (context) =>
+            _graph.AddPass((builder, context) => { builder.WriteTexture(_opaqueTarget); }, (context) =>
             {
                 var sortingSettings = new SortingSettings(_camera)
                 {
@@ -143,7 +138,7 @@ namespace SimpleRP.Runtime
                 filteringSettings.renderQueueRange = RenderQueueRange.transparent;
 
                 context.Context.DrawRenderers(_cullingResults, ref drawingSettings, ref filteringSettings);
-            }, name:"Draw Opaque Geometry");
+            }, name: "Draw Opaque Geometry");
         }
 
         private void Submit()
@@ -166,7 +161,6 @@ namespace SimpleRP.Runtime
 
         private void Cleanup()
         {
-
         }
     }
 }

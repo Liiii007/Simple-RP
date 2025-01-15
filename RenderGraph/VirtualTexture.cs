@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -40,7 +41,18 @@ namespace Plugins.SimpleRP.RenderGraph
             _handle = RTHandles.Alloc(_desc, name:Name);
             id = _handle.nameID;
             IsValid = true;
+
+            if (AllocatedTextures.Contains(this))
+            {
+                Debug.LogError("多次添加同一个VirtualTexture,可能存在泄漏");     
+            }
+            
+            AllocatedTextures.Add(this);
+            AllocatedHandles.Add(_handle);
         }
+
+        public static HashSet<RTHandle> AllocatedHandles = new();
+        public static HashSet<VirtualTexture> AllocatedTextures = new();
 
         public void ReleaseAndInvalid()
         {
@@ -53,6 +65,9 @@ namespace Plugins.SimpleRP.RenderGraph
             {
                 throw new ArgumentException("不能释放默认RT");
             }
+
+            AllocatedHandles.Remove(_handle);
+            AllocatedTextures.Remove(this);
 
             RTHandles.Release(_handle);
             _handle = null;
@@ -68,6 +83,16 @@ namespace Plugins.SimpleRP.RenderGraph
 
             IsValid = false;
             IsImported = false;
+        }
+
+        public override string ToString()
+        {
+            if (IsImported)
+            {
+                return $"Imported:{Name}";
+            }
+            
+            return Name;
         }
     }
 }

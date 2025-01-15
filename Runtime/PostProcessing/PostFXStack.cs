@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using FrameGraph;
-using FrameGraph.Serliazion;
 using Plugins.SimpleRP.RenderGraph;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
@@ -14,7 +12,6 @@ namespace SimpleRP.Runtime.PostProcessing
     {
         public const string BufferName = "Post FX";
 
-        private CommandBuffer _buffer = new CommandBuffer() { name = BufferName };
         private ScriptableRenderContext _context;
         private Camera _camera;
         private PostFXSettings _settings;
@@ -142,16 +139,6 @@ namespace SimpleRP.Runtime.PostProcessing
             }
         }
 
-        private void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFXSettings.FXPass pass)
-        {
-            _buffer.Blit(from, to, _settings.Material, (int)pass);
-        }
-
-        private void Draw(Texture from, RenderTargetIdentifier to, PostFXSettings.FXPass pass)
-        {
-            _buffer.Blit(from, to, _settings.Material, (int)pass);
-        }
-
         #region DoBloom
 
         private const int _maxBloomPyramidLevels = 16;
@@ -277,92 +264,95 @@ namespace SimpleRP.Runtime.PostProcessing
 
         private int[] blurMips;
 
+        // TODO:Use RenderGraph to blur image
         private bool DoBlur(object sourceId, RenderTargetIdentifier targetId, int iterations)
         {
-            iterations = Mathf.Max(1, iterations);
-
-            if (blurMips == null)
-            {
-                blurMips = new int[32];
-
-                for (int i = 0; i < 32; i++)
-                {
-                    blurMips[i] = Shader.PropertyToID("_BlurTexture_SimpleRP" + i);
-                }
-            }
-
-            int width = _camera.pixelWidth >> 1;
-            int height = _camera.pixelHeight >> 1;
-            var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
-
-            //1/2 RT
-            _buffer.GetTemporaryRT(blurMips[0], width, height, 0, FilterMode.Bilinear, format);
-
-            for (int i = 1; i < iterations; i++)
-            {
-                int cw = width >> i;
-                int ch = height >> i;
-
-                _buffer.GetTemporaryRT
-                (
-                    blurMips[i * 2 - 1],
-                    Mathf.Max(1, cw), Mathf.Max(1, ch),
-                    0, FilterMode.Bilinear, format
-                );
-
-                _buffer.GetTemporaryRT
-                (
-                    blurMips[i * 2],
-                    Mathf.Max(1, cw), Mathf.Max(1, ch),
-                    0, FilterMode.Bilinear, format
-                );
-            }
-
-            _buffer.GetTemporaryRT
-            (
-                blurMips[iterations * 2 - 1],
-                Mathf.Max(1, width >> 4), Mathf.Max(1, height >> 4),
-                0, FilterMode.Bilinear, format
-            );
-
-            if (sourceId is RenderTargetIdentifier rti)
-            {
-                Draw(rti, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
-            }
-            else if (sourceId is Texture texture)
-            {
-                Draw(texture, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
-            }
-            else
-            {
-                Debug.LogError("Unsupported type");
-                return false;
-            }
-
-            Draw(blurMips[0], blurMips[1], PostFXSettings.FXPass.BloomVertical);
-
-            for (int i = 1; i < iterations; i++)
-            {
-                Profiler.BeginSample("Blur" + i);
-                Draw
-                (
-                    blurMips[i * 2 - 1], blurMips[i * 2],
-                    PostFXSettings.FXPass.BloomHorizontal
-                );
-                Draw
-                (
-                    blurMips[i * 2], blurMips[i * 2 + 1],
-                    PostFXSettings.FXPass.BloomVertical
-                );
-                Profiler.EndSample();
-            }
-
-            Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.Copy);
-
-            for (int i = 0; i < iterations * 2; i++)
-            {
-                _buffer.ReleaseTemporaryRT(blurMips[i]);
-            }
+            // iterations = Mathf.Max(1, iterations);
+            //
+            // if (blurMips == null)
+            // {
+            //     blurMips = new int[32];
+            //
+            //     for (int i = 0; i < 32; i++)
+            //     {
+            //         blurMips[i] = Shader.PropertyToID("_BlurTexture_SimpleRP" + i);
+            //     }
+            // }
+            //
+            // int width = _camera.pixelWidth >> 1;
+            // int height = _camera.pixelHeight >> 1;
+            // var format = _useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
+            //
+            // //1/2 RT
+            // _buffer.GetTemporaryRT(blurMips[0], width, height, 0, FilterMode.Bilinear, format);
+            //
+            // for (int i = 1; i < iterations; i++)
+            // {
+            //     int cw = width >> i;
+            //     int ch = height >> i;
+            //
+            //     _buffer.GetTemporaryRT
+            //     (
+            //         blurMips[i * 2 - 1],
+            //         Mathf.Max(1, cw), Mathf.Max(1, ch),
+            //         0, FilterMode.Bilinear, format
+            //     );
+            //
+            //     _buffer.GetTemporaryRT
+            //     (
+            //         blurMips[i * 2],
+            //         Mathf.Max(1, cw), Mathf.Max(1, ch),
+            //         0, FilterMode.Bilinear, format
+            //     );
+            // }
+            //
+            // _buffer.GetTemporaryRT
+            // (
+            //     blurMips[iterations * 2 - 1],
+            //     Mathf.Max(1, width >> 4), Mathf.Max(1, height >> 4),
+            //     0, FilterMode.Bilinear, format
+            // );
+            //
+            // if (sourceId is RenderTargetIdentifier rti)
+            // {
+            //     Draw(rti, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
+            // }
+            // else if (sourceId is Texture texture)
+            // {
+            //     Draw(texture, blurMips[0], PostFXSettings.FXPass.BloomHorizontal);
+            // }
+            // else
+            // {
+            //     Debug.LogError("Unsupported type");
+            //     return false;
+            // }
+            //
+            // Draw(blurMips[0], blurMips[1], PostFXSettings.FXPass.BloomVertical);
+            //
+            // for (int i = 1; i < iterations; i++)
+            // {
+            //     Profiler.BeginSample("Blur" + i);
+            //     Draw
+            //     (
+            //         blurMips[i * 2 - 1], blurMips[i * 2],
+            //         PostFXSettings.FXPass.BloomHorizontal
+            //     );
+            //     Draw
+            //     (
+            //         blurMips[i * 2], blurMips[i * 2 + 1],
+            //         PostFXSettings.FXPass.BloomVertical
+            //     );
+            //     Profiler.EndSample();
+            // }
+            //
+            // Draw(blurMips[iterations * 2 - 1], targetId, PostFXSettings.FXPass.Copy);
+            //
+            // for (int i = 0; i < iterations * 2; i++)
+            // {
+            //     _buffer.ReleaseTemporaryRT(blurMips[i]);
+            // }
+            //
+            // return true;
 
             return true;
         }

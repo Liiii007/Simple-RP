@@ -1,6 +1,4 @@
-﻿using FrameGraph;
-using Plugins.SimpleRP.RenderGraph;
-using SimpleRP.Runtime.PostProcessing;
+﻿using Plugins.SimpleRP.RenderGraph;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -103,8 +101,6 @@ namespace SimpleRP.Runtime
             {
                 _opaqueTarget = new(BuiltinRenderTextureType.CameraTarget);
             }
-
-            Blackboard<VirtualTexture>.Set("_OpaqueTarget", _opaqueTarget);
 
             _graph.AddPass((builder, context) => { builder.WriteTexture(_opaqueTarget); }, context =>
             {

@@ -1,0 +1,60 @@
+#pragma kernel BlurX
+#pragma kernel BlurY
+
+float offsets[] = {
+    -3.23076923, -1.38461538, 0.0, 1.38461538, 3.23076923
+};
+
+float weights[] = {
+    0.07027027, 0.31621622, 0.22702703, 0.31621622, 0.07027027
+};
+
+Texture2D<float4> _Source;
+RWTexture2D<float4> _Target_RW;
+
+SamplerState sampler__Source;
+
+float4 _Source_TexelSize;
+// float4 _TSize;
+
+float4 _TSize;
+
+[numthreads(8,8,1)]
+void BlurX(uint2 id : SV_DispatchThreadID)
+{
+    if (any(id >= _TSize.zw))
+    {
+        return;
+    }
+    
+    float2 uv = id * _TSize.xy;
+    half3 color = 0.0;
+    for (int i = 0; i < 5; i++)
+    {
+        float offset = offsets[i] * 2.0 * _Source_TexelSize.x;
+        half3 c = _Source.SampleLevel(sampler__Source, uv + float2(offset, 0), 0);
+        color += c * weights[i];
+    }
+    _Target_RW[id] = float4(color,1);
+    _Target_RW[id] = float4(1,1,1,1);
+}
+
+[numthreads(8,8,1)]
+void BlurY(uint2 id : SV_DispatchThreadID)
+{
+    if (any(id >= _TSize.zw))
+    {
+        return;
+    }
+    
+    float2 uv = id * _TSize.xy;
+    half3 color = 0.0;
+    for (int i = 0; i < 5; i++)
+    {
+        float offset = offsets[i] * 2.0 * _Source_TexelSize.y;
+        half3 c = _Source.SampleLevel(sampler__Source, uv + float2(0, offset), 0);
+        color += c * weights[i];
+    }
+    _Target_RW[id] = float4(color, 1);
+    _Target_RW[id] = float4(1,1,1,1);
+}

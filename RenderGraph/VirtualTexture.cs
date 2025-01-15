@@ -15,6 +15,8 @@ namespace Plugins.SimpleRP.RenderGraph
         public bool IsImported { get; private set; }
         
         public string Name { get; private set; }
+        
+        public Vector2Int Size { get; private set; }
 
         public VirtualTexture(BuiltinRenderTextureType type)
         {
@@ -22,6 +24,7 @@ namespace Plugins.SimpleRP.RenderGraph
             IsValid = true;
             IsImported = true;
             Name = type.ToString();
+            Size = new Vector2Int(Screen.width, Screen.height);
         }
         
         public VirtualTexture(RenderTextureDescriptor desc, string name = "RT")
@@ -29,6 +32,7 @@ namespace Plugins.SimpleRP.RenderGraph
             _desc = desc;
             IsImported = false;
             Name = name;
+            Size = new(desc.width, desc.height);
         }
 
         public void Create()

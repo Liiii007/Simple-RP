@@ -27,7 +27,7 @@ Shader "Custom RP/RingMask"
                 float _FillRate;
             CBUFFER_END
 
-            struct Attributes
+            struct AttributesDown
             {
                 float3 positionOS : POSITION;
                 float2 baseUV : TEXCOORD0;
@@ -39,7 +39,7 @@ Shader "Custom RP/RingMask"
                 float2 screenUV : VAR_SCREEN_UV;
             };
 
-            Varyings UnlitPassVertex(Attributes input)
+            Varyings UnlitPassVertex(AttributesDown input)
             {
                 Varyings output;
                 float3 positionWS = TransformObjectToWorld(input.positionOS);

@@ -36,7 +36,7 @@ Shader "Simple/CustomLineShader"
             #pragma vertex UnlitVertex
             #pragma fragment UnlitFragment
 
-            struct Attributes
+            struct AttributesDown
             {
                 float3 positionOS : POSITION;
                 float3 a : TEXCOORD0;
@@ -58,7 +58,7 @@ Shader "Simple/CustomLineShader"
             float _BoundWidth;
             float _AARate;
 
-            Varyings UnlitVertex(Attributes v)
+            Varyings UnlitVertex(AttributesDown v)
             {
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);
@@ -91,7 +91,7 @@ Shader "Simple/CustomLineShader"
             #pragma vertex UnlitVertex
             #pragma fragment UnlitFragment
 
-            struct Attributes
+            struct AttributesDown
             {
                 float3 positionOS : POSITION;
                 float3 a : TEXCOORD0;
@@ -113,7 +113,7 @@ Shader "Simple/CustomLineShader"
             float _BoundWidth;
             float _AARate;
 
-            Varyings UnlitVertex(Attributes v)
+            Varyings UnlitVertex(AttributesDown v)
             {
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);

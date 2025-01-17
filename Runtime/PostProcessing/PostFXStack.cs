@@ -180,7 +180,6 @@ namespace SimpleRP.Runtime.PostProcessing
             Shader.SetGlobalVector(_bloomParamsId, new Vector4(scatter, clamp, threshold, thresholdKnee));
             Shader.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
 
-            //Prefilter
             for (int i = 0; i < bloomSettings.maxIterations; i++)
             {
                 int cw = width >> i;
@@ -207,11 +206,8 @@ namespace SimpleRP.Runtime.PostProcessing
                     builder.ReadTexture(source);
                     builder.WriteTexture(_bloomMipDown[0]);
                 },
-                context =>
-                {
-                    context.cmd.Blit(source.id, _bloomMipDown[0].id, _settings.Material,
-                        (int)PostFXSettings.FXPass.BloomPrefilterPassFragment);
-                }, name: "Bloom Prefilter");
+                context => { context.cmd.Blit(source.id, _bloomMipDown[0].id, _settings.kawaseMaterial, 0); },
+                name: "Bloom Prefilter");
 
             //Downsample
             var lastDown = _bloomMipDown[0];
@@ -223,45 +219,12 @@ namespace SimpleRP.Runtime.PostProcessing
                 _graph.AddPass((builder, context) =>
                     {
                         builder.ReadTexture(last);
-                        builder.WriteTexture(_bloomMipUp[index]);
-                        builder.ReadTexture(_bloomMipUp[index]);
                         builder.WriteTexture(_bloomMipDown[index]);
                     },
                     context =>
                     {
-                        var cs = _settings.cs;
-                        var cmd = context.cmd;
-                        
-                        var blurXKernel = _settings.cs.FindKernel("BlurX");
-                        var blurYKernel = _settings.cs.FindKernel("BlurY");
-                        
-                        cmd.SetComputeTextureParam(cs, blurXKernel, "_Source", last.id);
-                        cmd.SetComputeTextureParam(cs, blurXKernel, "_Target_RW", _bloomMipUp[index].id);
-                        cmd.SetComputeVectorParam(cs, "_SourceSize",
-                            new Vector4(1f / last.Size.x, 1f / last.Size.y,
-                                last.Size.x, last.Size.y));
-                        cmd.SetComputeVectorParam(cs, "_TargetSize",
-                            new Vector4(1f / _bloomMipUp[index].Size.x, 1f / _bloomMipUp[index].Size.y,
-                                _bloomMipUp[index].Size.x, _bloomMipUp[index].Size.y));
-                        cmd.DispatchCompute(cs, blurXKernel, Mathf.CeilToInt(_bloomMipUp[index].Size.x / 64f),
-                            Mathf.CeilToInt(_bloomMipUp[index].Size.y), 1);
-                        
-                        cmd.SetComputeTextureParam(cs, blurYKernel, "_Source", _bloomMipUp[index].id);
-                        cmd.SetComputeTextureParam(cs, blurYKernel, "_Target_RW", _bloomMipDown[index].id);
-                        cmd.SetComputeVectorParam(cs, "_SourceSize",
-                            new Vector4(1f / _bloomMipUp[index].Size.x, 1f / _bloomMipUp[index].Size.y,
-                                _bloomMipUp[index].Size.x, _bloomMipUp[index].Size.y));
-                        cmd.SetComputeVectorParam(cs, "_TargetSize",
-                            new Vector4(1f / _bloomMipDown[index].Size.x, 1f / _bloomMipDown[index].Size.y,
-                                _bloomMipDown[index].Size.x, _bloomMipDown[index].Size.y));
-                        cmd.DispatchCompute(cs, blurYKernel, Mathf.CeilToInt(_bloomMipDown[index].Size.x / 8f),
-                            Mathf.CeilToInt(_bloomMipDown[index].Size.y / 8f), 1);
-                        
-                        // context.cmd.Blit(last.id, _bloomMipUp[index].id, _settings.Material,
-                        //     (int)PostFXSettings.FXPass.BloomHorizontal);
-                        //
-                        // context.cmd.Blit(_bloomMipUp[index].id, _bloomMipDown[index].id, _settings.Material,
-                        //     (int)PostFXSettings.FXPass.BloomVertical);
+                        context.cmd.Blit(last.id, _bloomMipDown[index].id, _settings.Material, 1);
+                        // }
                     }, name: $"Bloom DownSample {i}");
 
                 lastDown = _bloomMipDown[index];
@@ -282,7 +245,7 @@ namespace SimpleRP.Runtime.PostProcessing
                     },
                     context =>
                     {
-                        context.cmd.SetGlobalTexture(_fxSourceId2, lowMip.id);
+                        // context.cmd.SetGlobalTexture(_fxSourceId2, lowMip.id);
                         context.cmd.Blit(highMip.id, dst.id, _settings.Material,
                             (int)PostFXSettings.FXPass.BloomCombine);
                     }, name: $"Bloom UpSample {i}");

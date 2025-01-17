@@ -10,7 +10,7 @@ CBUFFER_START(UnityPerMaterial)
     SAMPLER(sampler_MainTex);
 CBUFFER_END
 
-struct Attributes
+struct AttributesDown
 {
     float3 positionOS : POSITION;
     float2 baseUV : TEXCOORD0;
@@ -22,7 +22,7 @@ struct Varyings
     float2 baseUV : TEXCOORD0;
 };
 
-Varyings UnlitPassVertex(Attributes input)
+Varyings UnlitPassVertex(AttributesDown input)
 {
     Varyings output;
     float3 positionWS = TransformObjectToWorld(input.positionOS);

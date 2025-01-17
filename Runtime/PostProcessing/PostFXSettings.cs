@@ -18,8 +18,10 @@ namespace SimpleRP.Runtime.PostProcessing
         }
 
         [SerializeField] private Shader   shader = default;
-        [SerializeField] public ComputeShader cs = null;
         [NonSerialized]  private Material _material;
+        
+        public ComputeShader cs = null;
+        public Material kawaseMaterial;
 
         [SerializeField] private BloomSettings   _bloomSettings = default;
         public                   BloomSettings   Bloom => _bloomSettings;

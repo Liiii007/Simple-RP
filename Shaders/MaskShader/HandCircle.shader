@@ -35,7 +35,7 @@ Shader "Simple/CircleMask"
             #pragma vertex UnlitVertex
             #pragma fragment UnlitFragment
 
-            struct Attributes
+            struct AttributesDown
             {
                 float3 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
@@ -61,7 +61,7 @@ Shader "Simple/CircleMask"
                 float _AARate;
             CBUFFER_END
 
-            Varyings UnlitVertex(Attributes v)
+            Varyings UnlitVertex(AttributesDown v)
             {
                 Varyings o = (Varyings)0;
                 o.positionCS = TransformObjectToHClip(v.positionOS);

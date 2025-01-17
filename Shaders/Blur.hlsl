@@ -8,7 +8,7 @@ float4 _MainTex_TexelSize;
 TEXTURE2D(_MainTex);
 SAMPLER(sampler_linear_clamp);
 
-struct Attributes
+struct AttributesDown
 {
     float3 positionOS : POSITION;
     float2 uv : TEXCOORD0;
@@ -20,7 +20,7 @@ struct Varyings
     float2 screenUV : VAR_SCREEN_UV;
 };
 
-Varyings DefaultPassVertex(Attributes input)
+Varyings DefaultPassVertex(AttributesDown input)
 {
     Varyings output;
     float3 positionWS = TransformObjectToWorld(input.positionOS);

@@ -26,7 +26,7 @@ TEXTURE2D(_MainTex);
 SAMPLER(sampler_MainTex);
 float4 _MainTex_TexelSize;
 
-struct Attributes
+struct AttributesDown
 {
     float4 positionCS : SV_POSITION;
     float3 positionWS : VAR_WORLD_POSITION;
@@ -70,9 +70,9 @@ float4 GetMainTexTexelSize()
 }
 
 //Generate triangle which cover whole screen
-Attributes DefaultPassVertex(Varying input)
+AttributesDown DefaultPassVertex(Varying input)
 {
-    Attributes output;
+    AttributesDown output;
     output.positionWS = TransformObjectToWorld(input.position);
     output.positionCS = TransformWorldToHClip(output.positionWS);
     output.normalWS = TransformObjectToWorldNormal(input.normal);
@@ -80,7 +80,7 @@ Attributes DefaultPassVertex(Varying input)
     return output;
 }
 
-float4 CopyPassFragment(Attributes input) : SV_TARGET
+float4 CopyPassFragment(AttributesDown input) : SV_TARGET
 {
     float4 screen = GetSource(input.uv);
     return screen;
@@ -88,7 +88,7 @@ float4 CopyPassFragment(Attributes input) : SV_TARGET
 
 float _BlurRandom;
 
-half4 BloomHorizontalPassFragment(Attributes input) : SV_TARGET
+half4 BloomHorizontalPassFragment(AttributesDown input) : SV_TARGET
 {
     float texelSize = _MainTex_TexelSize.x;
     float2 uv = input.uv;
@@ -115,7 +115,7 @@ half4 BloomHorizontalPassFragment(Attributes input) : SV_TARGET
     return half4(color, 1.0);
 }
 
-half4 BloomVerticalPassFragment(Attributes input) : SV_TARGET
+half4 BloomVerticalPassFragment(AttributesDown input) : SV_TARGET
 {
     float texelSize = _MainTex_TexelSize.y;
     float2 uv = input.uv;
@@ -136,14 +136,14 @@ half4 BloomVerticalPassFragment(Attributes input) : SV_TARGET
     return half4(color, 1);
 }
 
-half4 BloomCombinePassFragment(Attributes input) : SV_TARGET
+half4 BloomCombinePassFragment(AttributesDown input) : SV_TARGET
 {
     float3 lowRes = GetSource2(input.uv).rgb;
     float3 highRes = GetSource(input.uv).rgb;
     return half4(lerp(highRes, lowRes, 0.7), 1);
 }
 
-half4 BloomPrefilterPassFragment(Attributes input) : SV_TARGET
+half4 BloomPrefilterPassFragment(AttributesDown input) : SV_TARGET
 {
     half3 color = GetSource(input.uv).rgb;
 
@@ -194,7 +194,7 @@ LumaNeighborhood GetLumaNeighborhood(float2 uv)
     return luma;
 }
 
-half4 ToneMappingACESPassFragment(Attributes input) : SV_TARGET
+half4 ToneMappingACESPassFragment(AttributesDown input) : SV_TARGET
 {
     half4 color = GetSource(input.uv);
     color += GetSource2(input.uv) * _BloomIntensity;
@@ -220,7 +220,7 @@ half4 ToneMappingACESPassFragment(Attributes input) : SV_TARGET
     return color;
 }
 
-half4 BW(Attributes input) : SV_TARGET
+half4 BW(AttributesDown input) : SV_TARGET
 {
     half4 color = GetSource(input.uv);
     color.rgb = dot(color.rgb, half3(0.2126, 0.7152, 0.0722));
@@ -395,7 +395,7 @@ float GetEdgeBlendFactor(LumaNeighborhood luma, FXAAEdge edge, float2 uv)
     return 0.5 - distanceToNearestEnd / (distanceToEndP + distanceToEndN);
 }
 
-half4 FXAAPassFragment(Attributes input) : SV_TARGET
+half4 FXAAPassFragment(AttributesDown input) : SV_TARGET
 {
     // return GetSource(input.uv);
     LumaNeighborhood luma = GetLumaNeighborhood(input.uv);

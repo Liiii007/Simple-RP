@@ -1,33 +1,32 @@
 #pragma kernel BlurX
 #pragma kernel BlurY
-#pragma enable_d3d11_debug_symbols
 
-Texture2D<float4> _Source;
-RWTexture2D<float4> _Target_RW;
+Texture2D<half3> _Source;
+RWTexture2D<float3> _Target_RW;
 
 SamplerState sampler_linear_clamp;
 
-float4 _SourceSize;
-float4 _TargetSize;
+half4 _SourceSize;
+half4 _TargetSize;
 
-#define RADIUS 5
+#define RADIUS 4
 groupshared half3 gs_Color[64 + 2 * RADIUS];
 
 [numthreads(64, 1, 1)]
-void BlurX(uint2 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint2 id : SV_DispatchThreadID)
+void BlurX(uint groupIndex : SV_GroupIndex, uint2 id : SV_DispatchThreadID)
 {
-    float2 uv = (id + 0.5) * _TargetSize.xy;
+    half2 uv = (id + 0.5) * _TargetSize.xy;
     half3 gsColor = _Source.SampleLevel(sampler_linear_clamp, uv, 0);
     gs_Color[groupIndex + RADIUS] = gsColor;
 
     if(groupIndex < RADIUS)
     {
-        gs_Color[groupIndex] = _Source.SampleLevel(sampler_linear_clamp, uv - float2(RADIUS * _TargetSize.x, 0), 0);
+        gs_Color[groupIndex] = _Source.SampleLevel(sampler_linear_clamp, uv - half2(RADIUS * _TargetSize.x, 0), 0);
     }
     
     if(groupIndex >= 64 - RADIUS)
     {
-        gs_Color[groupIndex + 10] = _Source.SampleLevel(sampler_linear_clamp, uv + float2(RADIUS * _TargetSize.x, 0), 0);
+        gs_Color[groupIndex + RADIUS * 2] = _Source.SampleLevel(sampler_linear_clamp, uv + half2(RADIUS * _TargetSize.x, 0), 0);
     }
 
     GroupMemoryBarrierWithGroupSync();
@@ -38,15 +37,17 @@ void BlurX(uint2 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint2 id
     }
 
     half3 color = 0.0;
-    for (int i = -5; i <= 5; i++)
+
+    [unroll]
+    for (half i = -RADIUS; i <= RADIUS; i+=1)
     {
-        float offset = i * _SourceSize.x;
-        half3 c = _Source.SampleLevel(sampler_linear_clamp, uv + float2(offset, 0), 0);
+        half offset = i * _SourceSize.x;
+        half3 c = _Source.SampleLevel(sampler_linear_clamp, uv + half2(offset, 0), 0);
         c = gs_Color[groupIndex + i + 5];
-        color += c / 11;
+        color += c;
     }
-    _Target_RW[id] = float4(color, 1);
-    // _Target_RW[id] = float4(gs_Color[groupIndex + RADIUS], 1);
+    
+    _Target_RW[id] = color / 11;
 }
 
 [numthreads(8,8,1)]
@@ -57,13 +58,16 @@ void BlurY(uint2 id : SV_DispatchThreadID)
         return;
     }
 
-    float2 uv = (id + 0.5) * _TargetSize.xy;
+    half2 uv = (id + 0.5) * _TargetSize.xy;
     half3 color = 0.0;
-    for (int i = -5; i <= 5; i++)
+
+    [unroll]
+    for (half i = -5; i <= 5; i+=1)
     {
-        float offset = i * _SourceSize.y;
-        half3 c = _Source.SampleLevel(sampler_linear_clamp, uv + float2(0, offset), 0);
-        color += c / 11;
+        half offset = i * _SourceSize.y;
+        half3 c = _Source.SampleLevel(sampler_linear_clamp, uv + half2(0, offset), 0);
+        color += c;
     }
-    _Target_RW[id] = float4(color, 1);
+    
+    _Target_RW[id] = color / 11;
 }

@@ -177,6 +177,10 @@ namespace SimpleRP.Runtime.PostProcessing
             float threshold = Mathf.GammaToLinearSpace(bloomSettings.threshold);
             float thresholdKnee = threshold * 0.5f;
             float scatter = Mathf.Lerp(0.05f, 0.95f, 0.7f);
+            
+            Shader.SetGlobalFloat("ClampMax", clamp);
+            Shader.SetGlobalFloat("Threshold", threshold);
+            Shader.SetGlobalFloat("ThresholdKnee", thresholdKnee);
             Shader.SetGlobalVector(_bloomParamsId, new Vector4(scatter, clamp, threshold, thresholdKnee));
             Shader.SetGlobalFloat(_bloomIntensityId, bloomSettings.intensity);
 
@@ -223,8 +227,7 @@ namespace SimpleRP.Runtime.PostProcessing
                     },
                     context =>
                     {
-                        context.cmd.Blit(last.id, _bloomMipDown[index].id, _settings.Material, 1);
-                        // }
+                        context.cmd.Blit(last.id, _bloomMipDown[index].id, _settings.kawaseMaterial, 1);
                     }, name: $"Bloom DownSample {i}");
 
                 lastDown = _bloomMipDown[index];
@@ -245,7 +248,7 @@ namespace SimpleRP.Runtime.PostProcessing
                     },
                     context =>
                     {
-                        // context.cmd.SetGlobalTexture(_fxSourceId2, lowMip.id);
+                        context.cmd.SetGlobalTexture(_fxSourceId2, lowMip.id);
                         context.cmd.Blit(highMip.id, dst.id, _settings.Material,
                             (int)PostFXSettings.FXPass.BloomCombine);
                     }, name: $"Bloom UpSample {i}");

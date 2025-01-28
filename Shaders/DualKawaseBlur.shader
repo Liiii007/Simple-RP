@@ -104,6 +104,7 @@ Shader "Hidden/Simple RP/DualKawaseBlur"
             #pragma target 3.5
             #pragma vertex DownsamplePassVertex
             #pragma fragment BloomPrefilterPassFragment
+            #pragma enable_d3d11_debug_symbols
 
             half3 Prefilter(half3 color)
             {
@@ -124,7 +125,7 @@ Shader "Hidden/Simple RP/DualKawaseBlur"
 
             half4 BloomPrefilterPassFragment(AttributesDown input) : SV_TARGET
             {
-                half3 color = Prefilter(SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_linear_clamp, input.uv, 0)) * 2;
+                half3 color = Prefilter(SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_linear_clamp, input.uv, 0)) * 4;
                 half3 color1 = Prefilter(SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_linear_clamp, input.uv1, 0));
                 half3 color2 = Prefilter(SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_linear_clamp, input.uv2, 0));
                 half3 color3 = Prefilter(SAMPLE_TEXTURE2D_LOD(_MainTex, sampler_linear_clamp, input.uv3, 0));

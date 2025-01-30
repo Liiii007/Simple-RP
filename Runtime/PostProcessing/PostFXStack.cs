@@ -66,7 +66,10 @@ namespace SimpleRP.Runtime.PostProcessing
 
         public void Render(int sourceId)
         {
-            // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
+            foreach (var (from, to, iteration) in blurTextureQueue)
+            {
+                DoBlur(from, to, iteration);
+            }
 
             _buffer.SetGlobalFloat("_Brightness", SimpleRenderPipelineParameter.Brightness * 0.01f + 1f);
             _buffer.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
@@ -94,27 +97,9 @@ namespace SimpleRP.Runtime.PostProcessing
                 DoBlur(from, to, iteration);
             }
 
-            foreach (var (from, to, iteration) in blurTextureQueue)
-            {
-                DoBlur(from, to, iteration);
-            }
 
             blurRTQueue.Clear();
             blurTextureQueue.Clear();
-
-            #if UNITY_EDITOR && !SIMPLE_EDITOR
-            if (_graph == null || PassGraph.RequireUpdate)
-            {
-                _graph                  = PassGraph.Parse(Resources.Load<FrameGraphData>("RGraph"));
-                PassGraph.RequireUpdate = false;
-            }
-
-            _graph.Execute(new RenderData()
-            {
-                context = _context,
-                cmd     = _buffer
-            });
-            #endif
 
             _context.ExecuteCommandBuffer(_buffer);
             _buffer.Clear();

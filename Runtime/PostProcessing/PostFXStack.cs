@@ -66,10 +66,7 @@ namespace SimpleRP.Runtime.PostProcessing
 
         public void Render(int sourceId)
         {
-            foreach (var (from, to, iteration) in blurTextureQueue)
-            {
-                DoBlur(from, to, iteration);
-            }
+            // DoBlur(sourceId, BuiltinRenderTextureType.CameraTarget);
 
             _buffer.SetGlobalFloat("_Brightness", SimpleRenderPipelineParameter.Brightness * 0.01f + 1f);
             _buffer.SetGlobalFloat("_Saturation", SimpleRenderPipelineParameter.Saturation * 0.01f + 1f);
@@ -97,6 +94,12 @@ namespace SimpleRP.Runtime.PostProcessing
                 DoBlur(from, to, iteration);
             }
 
+            foreach (var (from, to, iteration) in blurTextureQueue)
+            {
+                DoBlur(from, to, iteration);
+            }
+            
+            _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
 
             blurRTQueue.Clear();
             blurTextureQueue.Clear();

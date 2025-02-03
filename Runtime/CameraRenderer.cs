@@ -1,5 +1,4 @@
 ﻿using FrameGraph;
-using SimpleRP.Runtime.PostProcessing;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -86,11 +85,6 @@ namespace SimpleRP.Runtime
                                         RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
 
                 Blackboard<RenderTextureDescriptor>.Set("CameraOpaqueTextureDescriptor", desc);
-                Blackboard<VirtualRenderTarget>.Set("_CameraOpaqueTexture",
-                                                    new VirtualRenderTarget(
-                                                        BuiltinRenderTextureType.CameraTarget, default));
-                Blackboard<VirtualRenderTarget>.Set("_FrameBuffer",
-                                                    new VirtualRenderTarget(_frameBufferId, desc));
             }
 
             _buffer.ClearRenderTarget(flags <= CameraClearFlags.Depth, flags <= CameraClearFlags.Color,

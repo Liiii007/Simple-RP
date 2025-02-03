@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using FrameGraph;
-using FrameGraph.Serliazion;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
@@ -25,8 +23,6 @@ namespace SimpleRP.Runtime.PostProcessing
         private int[] _bloomMipDown;
 
         private Vector2Int _screenRTSize;
-
-        private PassGraph _graph;
 
         public PostFXStack()
         {
